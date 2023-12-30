@@ -8,7 +8,6 @@ import SQIsign2D: Montgomery, PointOrder, Ladder, DefintionField, IsRational, Pr
 struct Point{T <: RingElem}
     X::T
     Y::T
-    Z::T
 end
 
 function RandomSSCurve(F)
@@ -22,54 +21,66 @@ function RandomSSCurve(F)
     return E
 end
 
-function Dbl(Mont::Montgomery{T}, P::Point{T}) where T <: RingElem
+function Dbl(Mont::Montgomery{T}, P::Point{T}, lam::T) where T <: RingElem
     A = Mont.A
-    lam1 = 3*P.X^2 + 2*A*P.X*P.Z + P.Z^2
-    lam2 = 2*P.Y*P.Z
-    X = lam1^2*lam2*P.Z - lam2^3*(A*P.Z + 2*P.X)
-    Y = lam1 * (lam2^2 * (3*P.X + A*P.Z) - lam1^2*P.Z) - P.Y * lam2^3
-    Z = P.Z * lam2^3
-    return Point(X, Y, Z)
+    X = lam^2 - A - 2*P.X
+    Y = lam * (P.X - X) - P.Y
+    return Point(X, Y)
 end
 
-function xDbl(Mont::Montgomery{T}, P::Point{T}, lam1::T, lam2::T) where T <: RingElem
+function hPPQ(Mont::Montgomery{T}, P::Point{T}, Q::Point{T}, lam) where T <: RingElem
+    P.Y == 0 && return Q.X - P.X
     A = Mont.A
-    X = lam1^2*lam2*P.Z - lam2^3*(A*P.Z + 2*P.X)
-    Z = P.Z * lam2^3
-    return X, Z
+    return (Q.Y - P.Y - lam * (Q.X - P.X)) / (Q.X + 2*P.X + A - lam^2)
 end
 
-function hPPQ(Mont::Montgomery{T}, P::Point{T}, Q::Point{T}, lam1::T, lam2::T) where T <: RingElem
-    P.Y == 0 && return Q.X*P.Z - P.X*Q.Z, P.Z*Q.Z
+function MillerFuncPowerTwoInv(Mont::Montgomery{T}, P::Point{T}, Q::Point{T}, e::Integer) where T <: RingElem
+    F = DefintionField(Mont)
     A = Mont.A
-    return lam2^2 * (Q.Y*P.Z - P.Y*Q.Z) - lam1*lam2 * (Q.X*P.Z - P.X*Q.Z), lam2^2 * (Q.X*P.Z + 2*P.X*Q.Z + A*P.Z*Q.Z) - lam1^2*P.Z*Q.Z
+    R = P
+    f = F(1)
+    for i in 1:e-1
+        lam = (3*R.X^2 + 2*A*R.X + 1) / (2*R.Y)
+        f = f^2 * hPPQ(Mont, R, Q, lam)
+        R = Dbl(Mont, R, lam)
+    end
+    f = f^2 * (Q.X - R.X)
+    return f
+end
+
+function WeilPairingPowerTwoInv(Mont::Montgomery{T}, P::Point{T}, Q::Point{T}, e::Integer) where T <: RingElem
+    fPQ = MillerFuncPowerTwoInv(Mont, P, Q, e)
+    fQP = MillerFuncPowerTwoInv(Mont, Q, P, e)
+    return fPQ / fQP
 end
 
 function MillerFuncPowerTwo(Mont::Montgomery{T}, P::Point{T}, Q::Point{T}, e::Integer) where T <: RingElem
     F = DefintionField(Mont)
     A = Mont.A
-    X, Y, Z = P.X, P.Y, P.Z
+    X, Y, Z = P.X, P.Y, F(1)
     f1, f2 = F(1), F(1)
     for i in 1:e-1
-        lam1 = 3*X^2 + 2*A*X*Z + Z^2
+        AZ = A*Z
+        QXZ = Q.X*Z
+        lam1 = (3*X + 2*AZ) * X + Z^2
+        lam12Z = lam1^2*Z
         lam2 = 2*Y*Z
         lam22 = lam2^2
-        h1 = lam22 * (Q.Y*Z - Y*Q.Z) - lam1*lam2 * (Q.X*Z - X*Q.Z)
-        h2 = lam22 * (Q.X*Z + 2*X*Q.Z + A*Z*Q.Z) - lam1^2*Z*Q.Z
+        h1 = lam22 * (Q.Y*Z - Y) - lam1*lam2 * (QXZ - X)
+        h2 = lam22 * (QXZ + 2*X + AZ) - lam12Z
         f1 = f1^2 * h1
         f2 = f2^2 * h2
         if i < e-1
-            lam12Z = lam1^2*Z
             lam23 = lam2^3
-            X, Y, Z = lam12Z*lam2 - lam23*(A*Z + 2*X),
-                lam1 * (lam22 * (3*X + A*Z) - lam12Z) - Y * lam23,
+            X, Y, Z = lam12Z*lam2 - lam23*(AZ + 2*X),
+                lam1 * (lam22 * (3*X + AZ) - lam12Z) - Y * lam23,
                 Z * lam23
         else
-            X, Z = lam1^2*Z - lam22*(A*Z + 2*X), Z * lam22
+            X, Z = lam1^2*Z - lam22*(AZ + 2*X), Z * lam22
         end
     end
-    f1 = f1^2 * (Q.X*Z - X*Q.Z)
-    f2 = f2^2 * Z*Q.Z
+    f1 = f1^2 * (Q.X*Z - X)
+    f2 = f2^2 * Z
     return f1, f2
 end
 
@@ -117,14 +128,13 @@ xP = P.X / P.Z
 xQ = Q.X / Q.Z
 println("xP = ", xP)
 println("xQ = ", xQ)
-P = Point(xP, sqrt(xP^3 + A*xP^2 + xP), Fp2(1))
-Q = Point(xQ, sqrt(xQ^3 + A*xQ^2 + xQ), Fp2(1))
-T = P
-for _ in 1:e-1
-    global T = Dbl(E, T)
-end
-println("T = ", T)
+P = Point(xP, sqrt(xP^3 + A*xP^2 + xP))
+Q = Point(xQ, sqrt(xQ^3 + A*xQ^2 + xQ))
 w = WeilPairingPowerTwo(E, P, Q, e)
+wd = WeilPairingPowerTwoInv(E, P, Q, e)
 println(w^(ZZ(2)^(e-1)) == Fp2(-1))
+println(w == wd)
 r = @benchmark WeilPairingPowerTwo(E, P, Q, e)
+println(r)
+r = @benchmark WeilPairingPowerTwoInv(E, P, Q, e)
 println(r)
