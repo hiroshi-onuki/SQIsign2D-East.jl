@@ -60,7 +60,7 @@ function Ladder(E::Montgomery{T}, P::Proj1{T}, n::Integer) where T <: RingElem
     return P0
 end
 
-# return a point of order l in an elliptic curve of order ord
+# return a point of prime order l in an elliptic curve of order ord
 function PointOrder(E::Montgomery{T}, l::Integer, ord::Integer) where T <: RingElem
     n = ord
     while n % l == 0
