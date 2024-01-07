@@ -56,7 +56,7 @@ end
 
 for _ in 1:1000
     p = rand(5:10000)
-    while !isprime(p)
+    while !is_prime(p)
         p = rand(1:10000)
     end
     Fp = GF(p)
