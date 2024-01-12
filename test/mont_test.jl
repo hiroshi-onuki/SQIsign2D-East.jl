@@ -1,39 +1,10 @@
 using Test
 using Nemo
-import SQIsign2D: Montgomery, OddIsogeny, Ladder, PointOrder,
-    Proj1, IsInfinity, Affine, DefintionField
-
-# test Ladder
-function order_check(Mont::Montgomery, n::Integer)
-    A = Mont.A
-    F = parent(A)
-    X = rand(F)
-    while !is_square(X^3 + A*X^2 + X)
-        X = rand(F)
-    end
-    P = Proj1(X)
-    res = Ladder(Mont, P, n)
-    if !IsInfinity(res)
-        println("F = ", F)
-        println("A = ", A)
-        println("n = ", n)
-        println("P = ", P)
-        println("nP = ", res)
-    end
-    return IsInfinity(res)
-end
-
-# test PointOrder
-function point_order_check(Mont::Montgomery, l::Integer, ord::Integer)
-    P = PointOrder(Mont, l, ord)
-    lP = Ladder(Mont, P, l)
-    return !IsInfinity(P) && IsInfinity(lP)
-end
+import SQIsign2D: Proj1, xDBL, xADD, xDBLADD, Ladder, IsInfinity, Affine
 
 # order counting
-function order_count(Mont::Montgomery)
-    F = DefintionField(Mont)
-    A = Mont.A
+function order_count(A::FinFieldElem)
+    F = parent(A)
     cnt = 1
     for x in F
         y2 = x^3 + A*x^2 + x
@@ -46,31 +17,42 @@ function order_count(Mont::Montgomery)
     return cnt
 end
 
-# test IsogCoeff
-function isog_check(Mont::Montgomery, l::Integer)
-    ord = order_count(Mont)
-    P = PointOrder(Mont, l, ord)
-    Md = OddIsogeny(Mont, P, l)
-    return order_count(Md) == ord
+# test xDBL, xADD, and xDBLADD
+function test_xDBL_xADD_xDBLADD(F::FinField)
+    A = rand(F)
+    while A^2 == 4
+        A = rand(F)
+    end
+    a24 = Proj1(A + 2, F(4))
+    P = Proj1(rand(F), rand(F))
+    P2 = xDBL(P, a24)
+    P3 = xADD(P2, P, P)
+    P2d, P3d = xDBLADD(P, P2, P, a24)
+    @test P2 == P2d
+    @test P3 == P3d
 end
 
-for _ in 1:1000
-    p = rand(5:10000)
-    while !is_prime(p)
-        p = rand(1:10000)
+# test Ladder
+function test_Ladder(F::FinField)
+    A = rand(F)
+    while A^2 == 4
+        A = rand(F)
     end
-    Fp = GF(p)
-    A = rand(Fp)
-    if A^2 == 4
-        continue
+    a24 = Proj1(A + 2, F(4))
+    P = Proj1(rand(F), rand(F))
+    while !is_square(Affine(P)^3 + A*Affine(P)^2 + Affine(P))
+        P = Proj1(rand(F), rand(F))
     end
-    Mont = Montgomery(A)
-    ord = order_count(Mont)
-    l = rand([f[1] for f in factor(ord)])
+    ord = order_count(A)
+    @test IsInfinity(Ladder(ord, P, a24))
+end
 
-    @test order_check(Mont, ord) == true 
-    @test point_order_check(Mont, l, ord) == true
-    if l % 2 == 1
-        @test isog_check(Mont, l) == true
+for _ in 1:100
+    p = 1
+    while !is_prime(p)
+        p = rand(3:1000)
     end
+    F, _ = finite_field(p, 2)
+    test_xDBL_xADD_xDBLADD(F)
+    test_Ladder(F)
 end
