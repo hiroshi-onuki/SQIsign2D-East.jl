@@ -10,6 +10,8 @@ include("global_data.jl")
 
 include("../elliptic_curves/dlog.jl")
 
+include("../sqisign2d/sqisign2d.jl")
+
 function make_E0_data()
     _, T = polynomial_ring(GF(p), "T")
     Fp2, Fp2_i = finite_field(T^2 + 1, "i")
