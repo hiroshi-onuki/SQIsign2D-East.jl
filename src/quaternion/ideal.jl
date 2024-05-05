@@ -132,8 +132,8 @@ function two_e_good_element(I::LeftIdeal, nI::BigInt, cor_func::Function, bound:
     return QOrderElem(0), 0, 0, false
 end
 
-# return the shortest vector in I 
-function shortest_element(I::LeftIdeal, nI::BigInt, bound::BigInt, is_odd::Bool=true)
+# return alpha in I s.t. the odd part of q_I(alpha) < bound
+function short_element(I::LeftIdeal, nI::BigInt, bound::BigInt, margin::Integer=1000)
     q(x, y) = quadratic_form(QOrderElem(x), QOrderElem(y))
 
     # LLL reduction
@@ -147,7 +147,7 @@ function shortest_element(I::LeftIdeal, nI::BigInt, bound::BigInt, is_odd::Bool=
     U = zeros(Rational{Integer}, 4)
     L = zeros(Integer, 4)
     x = zeros(Integer, 4)
-    S[4] = bound
+    S[4] = bound * margin
 
     i = 4
     tmp = div(S[i] * denominator(U[i])^2, q[i,i])
@@ -156,8 +156,6 @@ function shortest_element(I::LeftIdeal, nI::BigInt, bound::BigInt, is_odd::Bool=
     x[i] = Integer(ceil(-Z-U[i]) - 1)
 
     counter = 0
-    min_alpha = Quaternion_0
-    minN = bound
     while true # counter < max_tries
         counter += 1
         x[i] += 1
@@ -179,16 +177,18 @@ function shortest_element(I::LeftIdeal, nI::BigInt, bound::BigInt, is_odd::Bool=
                 v = sum([x[i]*red_basis[i] for i in 1:4])
                 alpha = QOrderElem(v[1], v[2], v[3], v[4])
                 newN = div(norm(alpha), nI)
-                if (!is_odd || newN % 2 == 1) && newN < minN
-                    min_alpha = alpha
-                    minN = newN
+                exp = 0
+                while newN % 2 == 0
+                    newN = div(newN, 2)
+                    exp += 1
                 end
+                newN < bound && return alpha, exp, true
             else
-                return min_alpha
+                return Quaternion_0, 0, false
             end
         end
     end
-    return min_alpha
+    return Quaternion_0, 0, false
 end
 
 # return coefficients q_i,j s.t. Nrd(x) = sum_i q_i,i*(x_i + sum_j q_i,j*x_j)^2, where x = sum_i x_iI[i].

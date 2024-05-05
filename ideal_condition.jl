@@ -13,10 +13,14 @@ function check_exponents(a::Int, b::Int, is_odd::Bool=true)
     nJ = SQIsign2D.Level1.norm(J)
 
     # shortest vector
-    alpha = SQIsign2D.Level1.shortest_element(J, nJ, nJ*BigInt(2)^a, is_odd)
+    alpha, e, found = SQIsign2D.Level1.short_element(J, nJ, nJ*BigInt(2)^a)
 
-    q = div(SQIsign2D.Level1.norm(alpha), nJ)
-    return q !=0 && q*(BigInt(2)^a - q) < BigInt(2)^b
+    if found
+        q = div(SQIsign2D.Level1.norm(alpha), nJ << e)
+        return q !=0 && q*(BigInt(2)^a - q) < BigInt(2)^b
+    else
+        return false
+    end
 end
 
 a = 127
@@ -24,14 +28,6 @@ b = 252
 cnt = 0
 for _ in 1:10000
     if check_exponents(a, b)
-        global cnt += 1
-    end
-end
-println(cnt)
-
-cnt = 0
-for _ in 1:10000
-    if check_exponents(a, b, false)
         global cnt += 1
     end
 end
