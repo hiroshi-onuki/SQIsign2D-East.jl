@@ -10,7 +10,7 @@ end
 
 function RandIsogImages(d::BigInt, E0_data::E0Data)
     deg_dim2 = BigInt(2) << ExponentFull
-    alpha = FullRepresentInteger(d*(deg_dim2 - d))
+    alpha, _ = FullRepresentInteger(d*(deg_dim2 - d))
     xP, xQ, xPQ = action_on_torsion_basis(alpha, E0_data)
 
 

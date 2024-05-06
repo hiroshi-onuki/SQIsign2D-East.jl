@@ -18,15 +18,8 @@ struct E0Data{FqFieldElem <: RingElem}
     xP2e::Proj1{FqFieldElem}
     xQ2e::Proj1{FqFieldElem}
     xPQ2e::Proj1{FqFieldElem}
-    xP2e_short::Proj1{FqFieldElem}
-    xQ2e_short::Proj1{FqFieldElem}
-    xPQ2e_short::Proj1{FqFieldElem}
-    DegreesOddTorsionBases::Vector{Int}
-    ExponentsOddTorsionBases::Vector{Int}
-    OddTorsionBases::Vector{Vector{Proj1{FqFieldElem}}}
     Matrices_2e::Vector{Matrix{BigInt}}
     Matrix_2ed_inv::Matrix{BigInt}
-    Matrices_odd::Vector{Vector{Matrix{Int}}}
     isomorphism_to_A0::Function
     dlog_data_full::DlogData
     dlog_data_chall::DlogData
