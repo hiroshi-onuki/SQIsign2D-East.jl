@@ -9,8 +9,9 @@ include("../quaternion/klpt.jl")
 include("global_data.jl")
 
 include("../elliptic_curves/dlog.jl")
-
+include("../rii/rii.jl")
 include("../sqisign2d/sqisign2d.jl")
+
 
 function make_E0_data()
     _, T = polynomial_ring(GF(p), "T")
