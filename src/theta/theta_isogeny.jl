@@ -79,10 +79,8 @@ function two_two_isogeny_4torsion(domain::ThetaNullLv2{T}, T1::ThetaPtLv2{T}, im
     AA_inv, BB_inv, CC_inv, DD_inv = batched_inversion([AA, BB, CC, DD])
     
     A = F(1)
-    Bn, Bd = square_root(BB * AA_inv)
-    Cn, Cd = square_root(CC * AA_inv)
-    B = Bn / Bd
-    C = Cn / Cd
+    B = square_root(BB * AA_inv)
+    C = square_root(CC * AA_inv)
     D = xCD * B / (xAB * C)
 
     B_inv = AA * BB_inv * B
@@ -110,12 +108,9 @@ function two_two_isogeny_2torsion(domain::ThetaNullLv2{T}, image_points::Vector{
     AA_inv, BB_inv, CC_inv, DD_inv = batched_inversion([AA, BB, CC, DD])
     
     A = F(1)
-    Bn, Bd = square_root(BB * AA_inv)
-    Cn, Cd = square_root(CC * AA_inv)
-    Dn, Dd = square_root(DD * AA_inv)
-    B = Bn / Bd
-    C = Cn / Cd
-    D = Dn / Dd
+    B = square_root(BB * AA_inv)
+    C = square_root(CC * AA_inv)
+    D = square_root(DD * AA_inv)
 
     B_inv = AA * BB_inv * B
     C_inv = AA * CC_inv * C

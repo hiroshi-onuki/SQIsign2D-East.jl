@@ -17,12 +17,11 @@ end
 # Montgomery coefficient to theta null
 function Montgomery_to_theta(A::T) where T <: RingElem
     dn, dd = square_root(A^2 - 4)
-    dd2 = dd + dd
-    Ad = A * dd
-    a1 = -Ad + dn + dd2
-    a2 = -Ad + dn - dd2
-    sq_n, sq_d = square_root(a1*a2)
-    return ThetaDim1(sq_n, sq_d * a2)
+    Ad = A
+    a1 = -Ad + dn + 2
+    a2 = -Ad + dn - 2
+    sq = square_root(a1*a2)
+    return ThetaDim1(sq, a2)
 end
 
 # theta null to Montgomery coefficient

@@ -53,11 +53,9 @@ function make_E0_data()
     A0d = As[1]
     beta = -A0d/3
     gamma = square_root(1 / (1 - 3*beta^2))
-    gamma = gamma[1]/gamma[2]
     A0dd = As[2]
     beta_d = -A0dd/3
     gamma_d = square_root(1 / (1 - 3*beta_d^2))
-    gamma_d = gamma_d[1]/gamma_d[2]
     function isomorphism_to_A0(A::Proj1{FqFieldElem}, Ps::Vector{Proj1{FqFieldElem}})
         if A == Proj1(A0)
             return Ps
