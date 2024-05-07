@@ -11,28 +11,24 @@ function mult_by_i(x::FinFieldElem)
 end
 
 # square root of x in Fp2
+# Algorithm 9 in Adj & Rodríguez-Henríquez, "Square Root Computation over Even Extension Fields".
 function square_root(x::FinFieldElem)
     Fp2 = parent(x)
     Fp = base_field(Fp2)
-    i = gen(Fp2)
     p = characteristic(Fp)
-    inv2 = div(p + 1, 2)
-    a, b = Fp(coeff(x, 0)), Fp(coeff(x, 1))
-    if b == 0
-        if a^div(p - 1, 2) == 1
-            return [a^div(p + 1, 4), Fp2(1)]
-        else
-            return [(-a)^div(p + 1, 4)*i, Fp2(1)]
-        end
+
+    a1 = x^div(p - 3, 4)
+    a1x = a1*x
+    a = a1*a1x
+    x0 = a1x
+    if a == -1
+        x0 = mult_by_i(x0)
+    else
+        b = (1 + a)^div(p - 1, 2)
+        x0 *= b
     end
-    d = (a^2 + b^2)^div(p + 1, 4)
-    t = (a + d) * inv2
-    x = t^div(p + 1, 4)
-    if x^2 != t
-        x = ((a - d) * inv2)^div(p + 1, 4)
-    end
-    y = b*inv2
-    return [x^2 + y*i, x]
+
+    return x0
 end
 
 # x < y in lexicographic order, i.e. x < y if and only if x[0] < y[0] or (x[0] == y[0] and x[1] < y[1])

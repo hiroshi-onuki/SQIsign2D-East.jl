@@ -54,6 +54,38 @@ function ec_dlog(A::T, xP::Proj1{T}, xQ::Proj1{T}, xR::Proj1{T}, E0::E0Data) whe
     return (n1 * invmod(n2, BigInt(2)^SQISIGN_challenge_length)) % BigInt(2)^SQISIGN_challenge_length
 end
 
+# return n1, n2, n3, n4 such that P = [n1]P0 + [n1]Q0, Q = [n3]P0 + [n4]Q0, where (P0, Q0) is a fixed basis of E0d[2^ExponentFull]
+function ec_bi_dlog_E0d(P::Point{FqFieldElem}, Q::Point{FqFieldElem}, global_data::GlobalData, idx::Int)
+    E0 = global_data.E0
+    E0d = global_data.orders_data[idx]
+    t1 = Tate_pairing_P0(P, E0d.tate_tableQ, Cofactor)
+    t2 = Tate_pairing_P0(P, E0d.tate_tableP, Cofactor)
+    t3 = Tate_pairing_P0(Q, E0d.tate_tableQ, Cofactor)
+    t4 = Tate_pairing_P0(Q, E0d.tate_tableP, Cofactor)
+
+    n1 = -fq_dlog_power_of_2_opt(t1, E0.dlog_data_full) * E0d.dlog_base
+    n2 = fq_dlog_power_of_2_opt(t2, E0.dlog_data_full) * E0d.dlog_base
+    n3 = -fq_dlog_power_of_2_opt(t3, E0.dlog_data_full) * E0d.dlog_base
+    n4 = fq_dlog_power_of_2_opt(t4, E0.dlog_data_full) * E0d.dlog_base
+
+    return n1, n2, n3, n4
+end
+
+# return n1, n2, n3, n4 such that P = [n1]P0 + [n1]Q0, Q = [n3]P0 + [n4]Q0, where (P0, Q0) is a fixed basis of E0d[2^ExponentFull]
+function ec_bi_dlog_E0d(xP::Proj1{FqFieldElem}, xQ::Proj1{FqFieldElem}, xPQ::Proj1{FqFieldElem}, global_data::GlobalData, idx::Int)
+    E0d = global_data.orders_data[idx]
+    A0 = E0d.A
+    P = Point(A0, xP)
+    Q = Point(A0, xQ)
+    PQ = add(P, -Q, Proj1(A0))
+    if !(xPQ == Proj1(PQ.X, PQ.Z))
+        Q = -Q
+    end
+
+    return ec_bi_dlog_E0d(P, Q, global_data, idx)
+end
+
+
 # x^(2^e)
 function square_e(x::FqFieldElem, e::Int)
     y = x

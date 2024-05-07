@@ -24,9 +24,9 @@ function Point(A::T, XZ::Proj1{T}) where T <: RingElem
     X, Z = XZ.X, XZ.Z
     XZ = X*Z
     Z2 = Z^2
-    Y, Yd = square_root(XZ*(X^2 + A*XZ + Z2))
-    X = XZ * Yd
-    Z = Z2 * Yd
+    Y = square_root(XZ*(X^2 + A*XZ + Z2))
+    X = XZ
+    Z = Z2
     return Point(X, Y, Z)
 end
 

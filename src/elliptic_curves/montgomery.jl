@@ -110,8 +110,8 @@ function x_add_sub(P::Proj1{T}, Q::Proj1{T}, a24::Proj1{T}) where T <: RingElem
     a = (X1Z2 - Z1X2)^2 * C
     b = (X1X2 + Z1Z2) * (X1Z2 + Z1X2) * C + (A + A) * X1X2 * Z1Z2
     c = (X1X2 - Z1Z2)^2 * C
-    d1, d2 = square_root(b^2 - a*c)
-    return Proj1(b*d2 + d1, a*d2)
+    d = square_root(b^2 - a*c)
+    return Proj1(b + d, a)
 end
 
 # return [m]P
@@ -559,20 +559,19 @@ function Montgomery_normalize(a24::Proj1{T}, Ps::Vector{Proj1{T}}) where T <: Ri
     twoC2 = C2 + C2
     threeC2 = twoC2 + C2
     d = A2 - twoC2 - twoC2
-    d1, d2 = square_root(d)
-    inv_2C2_d1 = 1/(twoC2 * d1)
-    Z0 = (A2 + A2) * inv_2C2_d1 * d1
-    t1 = (threeC2 + threeC2 + threeC2 - A2) * d1
-    t2 = (A2 - threeC2) * A.X * d2
-    Z1 = (t1 + t2) * inv_2C2_d1
-    Z2 = (t1 - t2) * inv_2C2_d1
+    d = square_root(d)
+    inv_2C2_d = 1/(twoC2 * d)
+    Z0 = (A2 + A2) * inv_2C2_d * d
+    t1 = (threeC2 + threeC2 + threeC2 - A2) * d
+    t2 = (A2 - threeC2) * A.X
+    Z1 = (t1 + t2) * inv_2C2_d
+    Z2 = (t1 - t2) * inv_2C2_d
 
     Z = Z0
     lex_order(Z1, Z) && (Z = Z1)
     lex_order(Z2, Z) && (Z = Z2)
 
-    Ad, Cd = square_root(Z)
-    Ad = Proj1(Ad, Cd)
+    Ad = Proj1(square_root(Z))
 
     if A == Ad
         R1, R2 = 0, 1
