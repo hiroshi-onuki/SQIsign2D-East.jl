@@ -19,7 +19,7 @@ function action_on_torsion_basis(alpha::QOrderElem, E0_data::E0Data)
 end
 
 # return the codomain of a random d-isogeny from E0 and the images of the basis points
-function RandIsogImages(d::BigInt, E0_data::E0Data)
+function RandIsogImages(d::BigInt, E0_data::E0Data, output_ideal::Bool=false)
     deg_dim2 = BigInt(1) << ExponentFull
     a24_0 = E0_data.a24_0
     xP0, xQ0, xPQ0 = E0_data.xP2e, E0_data.xQ2e, E0_data.xPQ2e
@@ -121,5 +121,12 @@ function RandIsogImages(d::BigInt, E0_data::E0Data)
         xP, xQ, xPQ = images[1][2], images[2][2], images[3][2]
         A = Es[2]
     end
-    return A, xP, xQ, xPQ
+    if output_ideal
+        return A, xP, xQ, xPQ, LeftIdeal(alpha, d)
+    else
+        return A, xP, xQ, xPQ
+    end
+end
+
+function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, I::LeftIdeal, E0_data::E0Data)
 end
