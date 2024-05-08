@@ -28,7 +28,8 @@ function challenge(A::Proj1{T}, global_data::E0Data)
     c = BigInt(0)
     len = ExponentFull - ExpornentForTorsion
     n, r = divrem(len, 8)
-    for i in 1:n
+    for i in 1:(n+1)
         c += BigInt(h[i]) << (8*(i-1))
     end
+    c >>= 8 - r
 end
