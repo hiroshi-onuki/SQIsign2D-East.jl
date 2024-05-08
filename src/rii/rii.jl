@@ -136,9 +136,8 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, I::LeftIdeal, nI:
         C, D, N_N_CD = 0, 0, 0
         while true
             C, D = EichlerModConstraint(I, nI, Quaternion_1, Quaternion_1, false)
-            C *= rand(1:nI)
-            D *= rand(1:nI)
             N_CD = p * (C^2 + D^2)
+            return quadratic_residue_symbol(N_CD, nI)
             N_N_CD = (N * invmod(N_CD, nI)) % nI
             quadratic_residue_symbol(N_N_CD, nI) == 1 && break
         end
