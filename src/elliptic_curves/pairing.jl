@@ -43,6 +43,17 @@ function Weil_pairing_2power(A::T, P::Point{T}, Q::Point{T}, e::Integer) where T
     return (fPQ1*fQP2) / (fPQ2*fQP1)
 end
 
+# Weil pairng e_{2^e}(P, Q)
+function Weil_pairing_2power(A::T, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, e::Integer) where T <: RingElem
+    P = Point(A, xP)
+    Q = Point(A, xQ)
+    PQ = add(P, -Q, Proj1(A))
+    if !(xPQ == Proj1(PQ.X, PQ.Z))
+        Q = -Q
+    end
+    return Weil_pairing_2power(A, P, Q, e)
+end
+
 # precomputed table for Tate pairings
 function make_pairing_table(A::FqFieldElem, P::Point{FqFieldElem}, e::Integer)
     R = P

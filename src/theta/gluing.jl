@@ -173,7 +173,7 @@ end
 # the gluing (2, 2)-isogeny with kernel <(P1, P2), (Q1, Q2)>
 function gluing_isogeny(a24_1::Proj1{T}, a24_2::Proj1{T},
         T1_8::CouplePoint{T}, T2_8::CouplePoint{T}, P1Q1P2Q2::CouplePoint{T},
-        image_points::Vector{CouplePoint{T}}, n::Integer) where T <: RingElem
+        image_points::Vector{CouplePoint{T}}, image_points_aux::Vector{CouplePoint{T}}, n::Integer) where T <: RingElem
     T1_4 = double(T1_8, a24_1, a24_2)
     T2_4 = double(T2_8, a24_1, a24_2)
     M = get_base_matrix(a24_1, a24_2, T1_4, T2_4)
@@ -194,18 +194,17 @@ function gluing_isogeny(a24_1::Proj1{T}, a24_2::Proj1{T},
             # P1 = 2^n*T1_4.P1, P2 = 2^n*T2_4.P2
             PT1 = ladder(BigInt(2)^n + 1, P1, a24_1)
             PT2 = ladder(BigInt(2)^n + 1, P2, a24_2)
+            PT = CouplePoint(PT1, PT2)
         elseif i == length(image_points)
             # P1 + T1_4.P1 = P1 + 2^n * image_points[end-1].P1,
             # P2 + T1_4.P2 = P2 + 2^n * image_points[end-1].P2
             P1Q1, P2Q2 = P1Q1P2Q2.P1, P1Q1P2Q2.P2
             PT1 = ladder3pt(BigInt(2)^n, P1, image_points[end-1].P1, P1Q1, a24_1)
             PT2 = ladder3pt(BigInt(2)^n, P2, image_points[end-1].P2, P2Q2, a24_2)
+            PT = CouplePoint(PT1, PT2)
         else
-            # require two squre roots
-            PT1 = x_add_sub(P1, T1_4.P1, a24_1)
-            PT2 = x_add_sub(P2, T1_4.P2, a24_2)
+            PT = image_points_aux[i]
         end
-        PT = CouplePoint(PT1, PT2)
         Ptheta = base_change_couple_point(P, M)
         PTtheta = base_change_couple_point(PT, M)
         
