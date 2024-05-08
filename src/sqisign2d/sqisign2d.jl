@@ -13,16 +13,16 @@ end
 function key_gen(global_data::E0Data)
     D_sec = random_secret_prime()
     E_pub, xP, xQ, xPQ, I_sec = RandIsogImages(D_sec, global_data, true)
-    return E_pub, I_sec, xP, xQ, xPQ, D_sec
+    return E_pub, I_sec, D_sec, xP, xQ, xPQ 
 end
 
 function commitment(global_data::E0Data)
     D_com = random_secret_prime()
     E_com, xP, xQ, xPQ, I_sec = RandIsogImages(D_com, global_data, true)
-    return E_com, I_sec, xP, xQ, xPQ, D_sec
+    return E_com, I_sec, D_sec, xP, xQ, xPQ
 end
 
-function challenge(A::Proj1{T}, global_data::E0Data)
+function challenge(A::Proj1{T}, global_data::E0Data) where T <: RingElem
     h = sha3_256(string(A) * m)
 
     c = BigInt(0)

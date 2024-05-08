@@ -128,5 +128,23 @@ function RandIsogImages(d::BigInt, E0_data::E0Data, output_ideal::Bool=false)
     end
 end
 
-function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, I::LeftIdeal, E0_data::E0Data)
+function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, I::LeftIdeal, nI::BigInt, E0_data::E0Data) where T <: RingElem
+    N = d*((BigInt(1) << ExponentFull) - d)
+    alpha = Quaternion_0
+    found = false
+    while !found
+        C, D, N_N_CD = 0, 0, 0
+        while true
+            C, D = EichlerModConstraint(I, nI, Quaternion_1, Quaternion_1, false)
+            C *= rand(1:nI)
+            D *= rand(1:nI)
+            N_CD = p * (C^2 + D^2)
+            N_N_CD = (N * invmod(N_CD, nI)) % nI
+            quadratic_residue_symbol(N_N_CD, nI) == 1 && break
+        end
+        lambda = sqrt_mod(4*N_N_CD, nI)
+
+        alpha, found = FullStrongApproximation(nI, C, D, lambda, 4*N, KLPT_signing_number_strong_approx)
+    end
+    println("alpha: ", alpha, " found: ", found)
 end
