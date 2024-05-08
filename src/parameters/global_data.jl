@@ -20,6 +20,7 @@ struct E0Data{FqFieldElem <: RingElem}
     xPQ2e::Proj1{FqFieldElem}
     Matrices_2e::Vector{Matrix{BigInt}}
     Matrix_2ed_inv::Matrix{BigInt}
+    Weil_P2eQ2e::FqFieldElem
     isomorphism_to_A0::Function
     dlog_data_full::DlogData
     dlog_data_chall::DlogData

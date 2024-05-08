@@ -18,6 +18,7 @@ function action_on_torsion_basis(alpha::QOrderElem, E0_data::E0Data)
     return action_of_matrix(M, E0_data)
 end
 
+# return the codomain of a random d-isogeny from E0 and the images of the basis points
 function RandIsogImages(d::BigInt, E0_data::E0Data)
     deg_dim2 = BigInt(1) << ExponentFull
     a24_0 = E0_data.a24_0
@@ -105,17 +106,20 @@ function RandIsogImages(d::BigInt, E0_data::E0Data)
     S1S2_T = CouplePoint(xS1_T, xS2_T)
     RS1RS2_T = CouplePoint(xRS1_T, xRS2_T)
 
-    strategy = compute_strategy(ExponentFull - e - 2, 2, 1)
+    if haskey(StrategiesDim2, ExponentFull - e)
+        strategy = StrategiesDim2[ExponentFull - e]
+    else
+        strategy = compute_strategy(ExponentFull - e - 2, 2, 1)
+    end
     Es, images = product_isogeny_sqrt(a24_1, a24_2, P1P2, Q1Q2, PQ1PQ2, [R1R2, S1S2, RS1RS2], [R1R2_T, S1S2_T, RS1RS2_T], ExponentFull - e, strategy)
 
     xP, xQ, xPQ = images[1][1], images[2][1], images[3][1]
-    A = affine(Es[1])
-    w0 = Weil_pairing_2power(E0_data.A0, E0_data.P2e, E0_data.Q2e, ExponentFull)
-    w1 = Weil_pairing_2power(A, xP, xQ, xPQ, ExponentFull)
+    A = Es[1]
+    w0 = E0_data.Weil_P2eQ2e
+    w1 = Weil_pairing_2power(affine(A), xP, xQ, xPQ, ExponentFull)
     if w1 != w0^d
         xP, xQ, xPQ = images[1][2], images[2][2], images[3][2]
-        A = affine(Es[2])
-        w1 = Weil_pairing_2power(A, xP, xQ, xPQ, ExponentFull)
-        @assert w1 == w0^d
+        A = Es[2]
     end
+    return A, xP, xQ, xPQ
 end

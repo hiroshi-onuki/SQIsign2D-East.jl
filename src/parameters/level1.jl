@@ -12,6 +12,14 @@ include("../elliptic_curves/dlog.jl")
 include("../rii/rii.jl")
 include("../sqisign2d/sqisign2d.jl")
 
+const StrategiesDim2 = Dict(
+    ExponentFull => compute_strategy(ExponentFull-2, 2, 1),
+    ExponentFull-1 => compute_strategy(ExponentFull-3, 2, 1),
+    ExponentFull-2 => compute_strategy(ExponentFull-4, 2, 1),
+    ExponentFull-3 => compute_strategy(ExponentFull-5, 2, 1),
+    ExponentFull-4 => compute_strategy(ExponentFull-6, 2, 1),
+    ExponentFull-5 => compute_strategy(ExponentFull-7, 2, 1)
+)
 
 function make_E0_data()
     _, T = polynomial_ring(GF(p), "T")
@@ -47,6 +55,8 @@ function make_E0_data()
 
     Matrices_2e = [M_i_2e, M_ij_2e, M_1k_2e]
 
+    w = Weil_pairing_2power(A0, P2e, Q2e, ExponentFull)
+
     # make constants for isomorphism to the curve E_A0
     _, T = polynomial_ring(Fp2, "T")
     As = roots((256 * (T^2 - 3)^3 - 1728 * (T^2 - 4))/T^2)
@@ -68,5 +78,5 @@ function make_E0_data()
         end
     end
 
-    return Fp2, E0Data(A0, A0d, A0dd, a24_0, jInvariant_A(A0), P2e, Q2e, xP2e, xQ2e, xPQ2e, Matrices_2e, M44inv, isomorphism_to_A0, dlog_data_full, dlog_data_chall, tp_table)
+    return Fp2, E0Data(A0, A0d, A0dd, a24_0, jInvariant_A(A0), P2e, Q2e, xP2e, xQ2e, xPQ2e, Matrices_2e, M44inv, w, isomorphism_to_A0, dlog_data_full, dlog_data_chall, tp_table)
 end
