@@ -26,6 +26,41 @@ function ec_bi_dlog_E0(xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, E0::E0Data) wh
     return ec_bi_dlog_E0(P, Q, E0)
 end
 
+function ec_bi_dlog_commitment(A::T, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, 
+                    xPb::Proj1{T}, xQb::Proj1{T}, xPQb::Proj1{T}, E0::E0Data) where T <: RingElem
+    P = Point(A, xP)
+    Q = Point(A, xQ)
+    PQ = add(P, -Q, Proj1(A))
+    if !(xPQ == Proj1(PQ.X, PQ.Z))
+        Q = -Q
+    end
+    Pb = Point(A, xPb)
+    Qb = Point(A, xQb)
+    PQb = add(Pb, -Qb, Proj1(A))
+    if !(xPQb == Proj1(PQb.X, PQb.Z))
+        Qb = -Qb
+    end
+
+    base = Weil_pairing_2power(A, Pb, Qb, SQISIGN_challenge_length)
+    w1 = Weil_pairing_2power(A, Pb, P, SQISIGN_challenge_length)
+    w2 = Weil_pairing_2power(A, P, Qb, SQISIGN_challenge_length)
+    w3 = Weil_pairing_2power(A, Pb, Q, SQISIGN_challenge_length)
+    w4 = Weil_pairing_2power(A, Q, Qb, SQISIGN_challenge_length)
+
+    n0 = fq_dlog_power_of_2_opt(base, E0.dlog_data_chall)
+    n1 = fq_dlog_power_of_2_opt(w1, E0.dlog_data_chall)
+    n2 = fq_dlog_power_of_2_opt(w2, E0.dlog_data_chall)
+    n3 = fq_dlog_power_of_2_opt(w3, E0.dlog_data_chall)
+    n4 = fq_dlog_power_of_2_opt(w4, E0.dlog_data_chall)
+    n0inv = invmod(n0, BigInt(2)^SQISIGN_challenge_length)
+    n1 = (n1 * n0inv) % BigInt(2)^SQISIGN_challenge_length
+    n2 = (n2 * n0inv) % BigInt(2)^SQISIGN_challenge_length
+    n3 = (n3 * n0inv) % BigInt(2)^SQISIGN_challenge_length
+    n4 = (n4 * n0inv) % BigInt(2)^SQISIGN_challenge_length
+
+    return n1, n2, n3, n4
+end
+
 # return n1, n2 such that P = [n1]P0 + [n2]Q0
 function ec_bi_dlog_challenge(A::T, xP::Proj1{T}, P0::Point{T}, Q0::Point{T}, E0::E0Data) where T <: RingElem
     P = Point(A, xP)

@@ -122,9 +122,9 @@ function RandIsogImages(d::BigInt, E0_data::E0Data, output_ideal::Bool=false)
         A = Es[2]
     end
     if output_ideal
-        return A, xP, xQ, xPQ, LeftIdeal(alpha, d)
+        return A_to_a24(A), xP, xQ, xPQ, LeftIdeal(alpha, d)
     else
-        return A, xP, xQ, xPQ
+        return A_to_a24(A), xP, xQ, xPQ
     end
 end
 
