@@ -72,8 +72,10 @@ function larger_ideal(I::LeftIdeal, N::Integer)
     return LeftIdeal([QOrderElem(b[1], b[2], b[3], b[4]) for b in basis])
 end
 
-# return alpha in I s.t. the odd part of q_I(alpha) < bound
-function short_element(I::LeftIdeal, nI::BigInt, bound::BigInt, margin::Integer=1000)
+# return alpha in I s.t. q_I(alpha) is odd and
+# there exist c, d s.t. d | q_I(alpha), d | prod(factors),
+# q_I(alpha)/d < 2^c, and q_I(alpha)/d is a quadratic residue modulo N
+function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{Int}, N::BigInt)
     q(x, y) = quadratic_form(QOrderElem(x), QOrderElem(y))
 
     # LLL reduction
@@ -87,7 +89,7 @@ function short_element(I::LeftIdeal, nI::BigInt, bound::BigInt, margin::Integer=
     U = zeros(Rational{Integer}, 4)
     L = zeros(Integer, 4)
     x = zeros(Integer, 4)
-    S[4] = bound * margin
+    S[4] = (nI * prod(factors)) << a
 
     i = 4
     tmp = div(S[i] * denominator(U[i])^2, q[i,i])
@@ -96,7 +98,7 @@ function short_element(I::LeftIdeal, nI::BigInt, bound::BigInt, margin::Integer=
     x[i] = Integer(ceil(-Z-U[i]) - 1)
 
     counter = 0
-    while true # counter < max_tries
+    while true
         counter += 1
         x[i] += 1
         while x[i] > L[i]
@@ -118,18 +120,31 @@ function short_element(I::LeftIdeal, nI::BigInt, bound::BigInt, margin::Integer=
                 alpha = QOrderElem(v[1], v[2], v[3], v[4])
                 newN = div(norm(alpha), nI)
                 if newN % 2 == 1
-                    newN < bound && return alpha, 1, true
-                    if newN % 3 == 0
-                        newN = div(newN, 3)
-                        newN < bound && return alpha, 3, true
+                    divisors = []
+                    for f in factors
+                        if newN % f == 0
+                            divisors = vcat(divisors, [d * f for d in divisors], [f])
+                        end
+                    end
+                    for d in divisors
+                        newNd = div(newN, d)
+                        c = a
+                        b = BigInt(1) << c
+                        while newNd < b
+                            if quadratic_residue_symbol(newN * (b - newNd), N) == 1
+                                return alpha, c, d, true
+                            end
+                            c -= 1
+                            b = BigInt(1) >> 1
+                        end
                     end
                 end
             else
-                return Quaternion_0, 0, false
+                return Quaternion_0, 0, 0, false
             end
         end
     end
-    return Quaternion_0, 0, false
+    return Quaternion_0, 0, 0, false
 end
 
 # return coefficients q_i,j s.t. Nrd(x) = sum_i q_i,i*(x_i + sum_j q_i,j*x_j)^2, where x = sum_i x_iI[i].

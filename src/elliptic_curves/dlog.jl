@@ -28,7 +28,7 @@ end
 
 # return n1, n2, n3, n4 such that P = [n1]P0 + [n1]Q0, Q = [n3]P0 + [n4]Q0
 # on E_A[2^SQISIGN_challenge_length]
-function ec_bi_dlog_pubkey(A::T, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, 
+function ec_bi_dlog_commitment(A::T, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, 
                     xPb::Proj1{T}, xQb::Proj1{T}, xPQb::Proj1{T}, E0::E0Data) where T <: RingElem
     P = Point(A, xP)
     Q = Point(A, xQ)

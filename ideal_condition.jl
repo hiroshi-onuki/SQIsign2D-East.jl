@@ -13,7 +13,7 @@ function check_exponents(a::Int, b::Int, is_odd::Bool=true)
     nJ = SQIsign2D.Level1.norm(J)
 
     # shortest vector
-    alpha, e, found = SQIsign2D.Level1.short_element(J, nJ, nJ*BigInt(2)^a)
+    alpha, e, found = SQIsign2D.Level1.element_for_response(J, nJ, nJ*BigInt(2)^a, 7)
 
     if found
         q = div(SQIsign2D.Level1.norm(alpha), e)
