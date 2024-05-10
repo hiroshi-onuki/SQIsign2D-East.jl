@@ -1,4 +1,4 @@
-export Point, double, add, mult, is_infinity
+export Point, double, add, mult, is_infinity, infinity_full_point
 
 # full point on a Montgomery curve
 struct Point{T <: RingElem}

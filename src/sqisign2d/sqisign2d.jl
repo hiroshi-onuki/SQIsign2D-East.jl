@@ -28,22 +28,35 @@ end
 
 function key_gen(global_data::GlobalData)
     D_sec = random_secret_prime()
-    a24, xP, xQ, xPQ, I_sec = RandIsogImages(D_sec, global_data, true)
-    a24, (xP, xQ, xPQ) = Montgomery_normalize(a24, [xP, xQ, xPQ])
+    a24, xP, xQ, xPQ, odd_images, I_sec = RandIsogImages(D_sec, global_data, true)
+    for xR in odd_images
+        @assert is_infinity(ladder(27, xR, a24))
+        @assert !is_infinity(ladder(9, xR, a24))
+    end
+    a24, images = Montgomery_normalize(a24, vcat([xP, xQ, xPQ], odd_images))
+    xP, xQ, xPQ = images[1:3]
+    odd_images = images[4:end]
+
+    for xR in odd_images
+        @assert is_infinity(ladder(27, xR, a24))
+        @assert !is_infinity(ladder(9, xR, a24))
+    end
+
     return Montgomery_coeff(a24), (I_sec, D_sec, xP, xQ, xPQ)
 end
 
 function commitment(global_data::GlobalData)
-    A, sk = key_gen(global_data)
-    _, _, xP, xQ, xPQ = sk
-    a24 = A_to_a24(A)
+    D_sec = random_secret_prime()
+    a24, xP, xQ, xPQ, _, I_sec = RandIsogImages(D_sec, global_data, false)
+    a24, (xP, xQ, xPQ) = Montgomery_normalize(a24, [xP, xQ, xPQ])
+    A = Montgomery_coeff(a24)
     xPc, xQc, xPQc = torsion_basis(a24, SQISIGN_challenge_length)
     xP = xDBLe(xP, a24, ExponentFull - SQISIGN_challenge_length)
     xQ = xDBLe(xQ, a24, ExponentFull - SQISIGN_challenge_length)
     xPQ = xDBLe(xPQ, a24, ExponentFull - SQISIGN_challenge_length)
     n1, n2, n3, n4 = ec_bi_dlog_commitment(A, xP, xQ, xPQ, xPc, xQc, xPQc, global_data.E0_data)
     M = [n1 n3; n2 n4]
-    return A, sk, M
+    return A, (I_sec, D_sec, xP, xQ, xPQ), M
 end
 
 
