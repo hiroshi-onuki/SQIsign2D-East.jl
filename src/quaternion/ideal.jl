@@ -126,13 +126,14 @@ function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{
                             divisors = vcat(divisors, [d * f for d in divisors], [f])
                         end
                     end
-                    for d in divisors
+                    for d in Set(divisors)
                         newNd = div(newN, d)
                         c = a
                         b = BigInt(1) << c
                         while newNd < b
-                            if quadratic_residue_symbol(newN * (b - newNd), N) == 1
-                                return alpha, c, d, true
+                            if quadratic_residue_symbol(newNd * (b - newNd), N) == 1
+                                newNd * (b - newNd) < BigInt(1) << ExponentFull && return alpha, c, d, true
+                                #return alpha, c, d, true
                             end
                             c -= 1
                             b = BigInt(1) >> 1

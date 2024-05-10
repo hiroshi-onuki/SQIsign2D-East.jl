@@ -7,7 +7,7 @@ struct DlogData
 end
 
 # structure for precomputed values
-struct E0Data{FqFieldElem <: RingElem}
+struct E0Data
     A0::FqFieldElem
     A0d::FqFieldElem
     A0dd::FqFieldElem
@@ -18,11 +18,21 @@ struct E0Data{FqFieldElem <: RingElem}
     xP2e::Proj1{FqFieldElem}
     xQ2e::Proj1{FqFieldElem}
     xPQ2e::Proj1{FqFieldElem}
+    DegreesOddTorsionBases::Vector{Int}
+    ExponentsOddTorsionBases::Vector{Int}
+    OddTorsionBases::Vector{Vector{Point{FqFieldElem}}}
     Matrices_2e::Vector{Matrix{BigInt}}
     Matrix_2ed_inv::Matrix{BigInt}
+    Matrices_odd::Vector{Vector{Matrix{Int}}}
     Weil_P2eQ2e::FqFieldElem
     isomorphism_to_A0::Function
     dlog_data_full::DlogData
     dlog_data_chall::DlogData
     tate_table::Vector{Vector{FqFieldElem}}
+end
+
+struct GlobalData
+    Fp2::FqField
+    Fp2_i::FqFieldElem
+    E0_data::E0Data
 end

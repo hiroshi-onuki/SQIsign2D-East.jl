@@ -19,8 +19,9 @@ function action_on_torsion_basis(alpha::QOrderElem, E0_data::E0Data)
 end
 
 # return the codomain of a random d-isogeny from E0 and the images of the basis points
-function RandIsogImages(d::BigInt, E0_data::E0Data, output_ideal::Bool=false)
+function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::Bool=false)
     deg_dim2 = BigInt(1) << ExponentFull
+    E0_data = global_data.E0_data
     a24_0 = E0_data.a24_0
     xP0, xQ0, xPQ0 = E0_data.xP2e, E0_data.xQ2e, E0_data.xPQ2e
 
@@ -70,15 +71,32 @@ function RandIsogImages(d::BigInt, E0_data::E0Data, output_ideal::Bool=false)
     e = max(e, 0)
 
     # compute R + T etc. for the gluing isogeny
-    M = quaternion_to_matrix((BigInt(1) << (ExponentFull - e - 2)) * beta1, E0_data)
-    xR1_T = action_of_matrix([1 0; 0 0] + M, E0_data, true)
-    xS1_T = action_of_matrix([0 0; 1 0] + M, E0_data, true)
-    xRS1_T = action_of_matrix([1 0; -1 0] + M, E0_data, true)
-    M = quaternion_to_matrix((BigInt(1) << (ExponentFull - e - 2)) * beta2, E0_data)
+    M1 = quaternion_to_matrix((BigInt(1) << (ExponentFull - e - 2)) * beta1, E0_data)
+    xR1_T = action_of_matrix([1 0; 0 0] + M1, E0_data, true)
+    xS1_T = action_of_matrix([0 0; 1 0] + M1, E0_data, true)
+    xRS1_T = action_of_matrix([1 0; -1 0] + M1, E0_data, true)
+    M2 = quaternion_to_matrix((BigInt(1) << (ExponentFull - e - 2)) * beta2, E0_data)
     Mg = quaternion_to_matrix(gamma, E0_data)
-    xR2_T = action_of_matrix(Mg*[1 0; 0 0] + M, E0_data, true)
-    xS2_T = action_of_matrix(Mg*[0 0; 1 0] + M, E0_data, true)
-    xRS2_T = action_of_matrix(Mg*[1 0; -1 0] + M, E0_data, true)
+    xR2_T = action_of_matrix(Mg*[1 0; 0 0] + M2, E0_data, true)
+    xS2_T = action_of_matrix(Mg*[0 0; 1 0] + M2, E0_data, true)
+    xRS2_T = action_of_matrix(Mg*[1 0; -1 0] + M2, E0_data, true)
+    if compute_odd_points
+        xT1 = action_of_matrix(M1, E0_data, true)
+        xT2 = action_of_matrix(M2, E0_data, true)
+        T1 = Point(E0_data.A0, xT1)
+        T2 = Point(E0_data.A0, xT2)
+        for basis in E0_data.OddTorsionBases
+            Pb1, Pb2 = basis
+            if gamma == Quaternion_1
+                Podd_1 = add(Pb1, Pb2, Proj1(E0_data.A0))
+                Podd_2 = add(Pb1, -Pb2, Proj1(E0_data.A0))
+            elseif gamma == Quaternion_i
+                iPb1 = Point(-Pb1.X, global_data.Fp2_i * Pb1.Y, Pb1.Z)
+                iPb2 = Point(-Pb2.X, global_data.Fp2_i * Pb2.Y, Pb2.Z)
+            end
+        end
+
+    end
 
     # if e > 1 then we compute (2, 2)-isogenies by Velu's formulas
     if e > 1
@@ -121,11 +139,8 @@ function RandIsogImages(d::BigInt, E0_data::E0Data, output_ideal::Bool=false)
         xP, xQ, xPQ = images[1][2], images[2][2], images[3][2]
         A = Es[2]
     end
-    if output_ideal
-        return A_to_a24(A), xP, xQ, xPQ, LeftIdeal(alpha, d)
-    else
-        return A_to_a24(A), xP, xQ, xPQ
-    end
+    
+    return A_to_a24(A), xP, xQ, xPQ, LeftIdeal(alpha, d)
 end
 
 function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, I::LeftIdeal, nI::BigInt, E0_data::E0Data) where T <: RingElem
