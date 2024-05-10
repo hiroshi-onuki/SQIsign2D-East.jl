@@ -49,7 +49,7 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
         n = norm(Quaternion_i * alpha - d)
         beta1 = Quaternion_i * alpha - d
         beta2 = alpha - d * Quaternion_i
-        gamma = Quaternion_i
+        gamma = Quaternion_i    
     else
         xP1 = ladder(deg_dim2 - d, xP0, a24_0)
         xQ1 = ladder(deg_dim2 - d, xQ0, a24_0)
@@ -109,6 +109,8 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
         S2_T = T2
         RS2_T = T2
     end
+    @assert xDBLe(xP1, a24_0, ExponentFull - e - 2) == Proj1(T1.X, T1.Z)
+    @assert xDBLe(xP2, a24_0, ExponentFull - e - 2) == Proj1(T2.X, T2.Z)
     @assert xR1_T == Proj1(R1_T.X, R1_T.Z)
     @assert xS1_T == Proj1(S1_T.X, S1_T.Z)
     @assert xRS1_T == Proj1(RS1_T.X, RS1_T.Z)
