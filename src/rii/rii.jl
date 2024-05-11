@@ -53,7 +53,7 @@ function compute_22isog_from_Esq(a24::Proj1{T}, d::BigInt, alpha::QOrderElem, xP
     xP1, xQ1, xPQ1 = action_on_torsion_basis(beta1, a24, xP0, xQ0, xPQ0, E0_data)
     xP2, xQ2, xPQ2 = action_on_torsion_basis(beta2, a24, xP0, xQ0, xPQ0, E0_data)
 
-    a24_1= a24
+    a24_1 = a24
     a24_2 = a24
     e = -1
     while n % 2 == 0
@@ -171,7 +171,7 @@ function compute_22isog_from_Esq(a24::Proj1{T}, d::BigInt, alpha::QOrderElem, xP
     if a24 == E0_data.a24_0
         w0 = E0_data.Weil_P2eQ2e
     else
-        w0 = Weil_pairing_2power(Montgomey_coeff(a24), xP0, xQ0, xPQ0, ExponentFull)
+        w0 = Weil_pairing_2power(Montgomery_coeff(a24), xP0, xQ0, xPQ0, ExponentFull)
     end
     w1 = Weil_pairing_2power(affine(A), xP, xQ, xPQ, ExponentFull)
     if w1 != w0^d
@@ -179,9 +179,12 @@ function compute_22isog_from_Esq(a24::Proj1{T}, d::BigInt, alpha::QOrderElem, xP
     end
     xP, xQ, xPQ = images[1][idx], images[2][idx], images[3][idx]
     A = Es[idx]
+    odd_images = [image[idx] for image in images[4:end]]
+
+    # check the pairing
     w1 = Weil_pairing_2power(affine(A), xP, xQ, xPQ, ExponentFull)
     @assert w1 == w0^d
-    odd_images = [image[idx] for image in images[4:end]]
+    # end
 
     return A_to_a24(A), xP, xQ, xPQ, odd_images
 end
@@ -203,20 +206,26 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
     end
 end
 
-function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, I::LeftIdeal, nI::BigInt, global_data::GlobalData) where T <: RingElem
+# return the codomain of a random d-isogeny from E and the images of (P, Q),
+# where P, Q is the image of the fixed basis of E0[2^ExponentFull] under an isogeny corresponding to I
+function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T},
+            I::LeftIdeal, nI::BigInt, global_data::GlobalData) where T <: RingElem
     N = d*((BigInt(1) << ExponentFull) - d)
     alpha = Quaternion_0
     
     found = false
 
+    # make alpha in I + Z s.t. n(alpha) = N
     C, D = EichlerModConstraint(I, nI, Quaternion_1, Quaternion_1, false)
     N_CD = p * (C^2 + D^2)
     N_N_CD = (N * invmod(N_CD, nI)) % nI
     lambda = sqrt_mod(4*N_N_CD, nI)
-    @assert quadratic_residue_symbol(N_N_CD, nI) == 1
-    @assert 4*N > nI^3 * p
-
     alpha, found = FullStrongApproximation(nI, C, D, lambda, 4*N, KLPT_signing_number_strong_approx)
+    @assert found
+    @assert norm(alpha) == N
 
-    return alpha, found
+    println("d = ", d)
+    a24, xP, xQ, xPQ, _ = compute_22isog_from_Esq(a24, d, alpha, xP, xQ, xPQ, global_data)
+
+    return a24, xP, xQ, xPQ
 end

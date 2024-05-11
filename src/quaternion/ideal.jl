@@ -128,18 +128,19 @@ function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{
                         end
                     end
                     for d in Set(divisors)
-                        newNd = div(newN, d)
-                        c = a
-                        b = BigInt(1) << c
-                        while newNd < b
-                            D = newNd * (b - newNd)
-                            D = D * ((BigInt(1) << ExponentFull) - D)
-                            if quadratic_residue_symbol(-D, N) == 1
-                                newNd * (b - newNd) < BigInt(1) << ExponentFull && return alpha, c, d, true
-                                #return alpha, c, d, true
+                        if newN % d == 0
+                            newNd = div(newN, d)
+                            c = a
+                            b = BigInt(1) << c
+                            while newNd < b
+                                D = newNd * (b - newNd)
+                                D = D * ((BigInt(1) << ExponentFull) - D)
+                                if quadratic_residue_symbol(-D, N) == 1
+                                    newNd * (b - newNd) < BigInt(1) << ExponentFull && return alpha, c, d, true
+                                end
+                                c -= 1
+                                b = BigInt(1) >> 1
                             end
-                            c -= 1
-                            b = BigInt(1) >> 1
                         end
                     end
                 end

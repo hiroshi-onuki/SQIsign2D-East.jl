@@ -74,7 +74,7 @@ end
 function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     A = pk
     a24pub = A_to_a24(A)
-    Isec, Dsec, xPpub, xQpub, xPQpub = sk
+    Isec, Dsec, xPsec, xQsec, xPQsec = sk
     Acom, (Icom, Dcom, xPcom, xQcom, xPQcom), Mcom = commitment(global_data)
 
     c = challenge(Acom, m, global_data)
@@ -90,7 +90,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     alpha, c, d, found = element_for_response(I, nI, ExponentForTorsion, [3, 3 ,3], Dsec)
     if found
         q = div(norm(alpha), d*nI)
-        alpha, found = GeneralizedRandomIsogImages(q * ((BigInt(1) << c) - q) , a24pub, Isec, Dsec, global_data)
+        a24, xP, xQ, xPQ = GeneralizedRandomIsogImages(q * ((BigInt(1) << c) - q), a24pub, xPsec, xQsec, xPQsec, Isec, Dsec, global_data)
     end
     return c, d, found
 end
