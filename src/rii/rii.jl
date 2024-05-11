@@ -26,22 +26,19 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
     xP0, xQ0, xPQ0 = E0_data.xP2e, E0_data.xQ2e, E0_data.xPQ2e
 
     alpha, _ = FullRepresentInteger(d*(deg_dim2 - d))
-    println("n(alpha) % 3: ", norm(alpha) % 3)
 
     if (alpha + deg_dim2) % 2 == 1
         # the first (2,2)-isogeny is E0^2 -> E0^2 represented by the matrix [1 -1; 1 1]
-        println("1 case")
         beta1 = -d - alpha
         beta2 = -d + alpha
         gamma = Quaternion_1
         xR1, xS1, xRS1 = xP0, xQ0, xPQ0
-        xR2, xS2, xRS2 = xP0, xQ0, xPQ0    
+        xR2, xS2, xRS2 = xP0, xQ0, xPQ0
     elseif (alpha + deg_dim2*Quaternion_i) % 2 == Quaternion_i
         # the first (2,2)-isogeny is E0^2 -> E0^2 represented by the matrix [1 i; i 1]
-        println("i case")
-        beta1 = Quaternion_i * alpha - d
-        beta2 = alpha - d * Quaternion_i
-        gamma = Quaternion_i    
+        beta1 = -d + Quaternion_i * alpha
+        beta2 = -d * Quaternion_i + alpha
+        gamma = Quaternion_i
         xR1, xS1, xRS1 = xP0, xQ0, xPQ0
         xR2, xS2, xRS2 = -xP0, -xQ0, -xPQ0
     else
@@ -76,46 +73,13 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
     xS2_T = action_of_matrix(Mg*[0 0; 1 0] + M2, E0_data, true)
     xRS2_T = action_of_matrix(Mg*[1 0; -1 0] + M2, E0_data, true)
 
-    # check by full point
-    P0 = E0_data.P2e
-    Q0 = E0_data.Q2e
-    PQ0 = add(P0, -Q0, Proj1(E0_data.A0))
-    T1 = add(mult(M1[1, 1], P0, Proj1(E0_data.A0)), mult(M1[2, 1], Q0, Proj1(E0_data.A0)), Proj1(E0_data.A0))
-    T2 = add(mult(M2[1, 1], P0, Proj1(E0_data.A0)), mult(M2[2, 1], Q0, Proj1(E0_data.A0)), Proj1(E0_data.A0))
-    R1_T = add(P0, T1, Proj1(E0_data.A0))
-    S1_T = add(Q0, T1, Proj1(E0_data.A0))
-    RS1_T = add(PQ0, T1, Proj1(E0_data.A0))
-    if gamma == Quaternion_1
-        R2_T = add(P0, T2, Proj1(E0_data.A0))
-        S2_T = add(Q0, T2, Proj1(E0_data.A0))
-        RS2_T = add(PQ0, T2, Proj1(E0_data.A0))
-    elseif gamma == Quaternion_i
-        iP0 = Point(-P0.X, global_data.Fp2_i * P0.Y, P0.Z)
-        iQ0 = Point(-Q0.X, global_data.Fp2_i * Q0.Y, Q0.Z)
-        iPQ0 = Point(-PQ0.X, global_data.Fp2_i * PQ0.Y, PQ0.Z)
-        R2_T = add(iP0, T2, Proj1(E0_data.A0))
-        S2_T = add(iQ0, T2, Proj1(E0_data.A0))
-        RS2_T = add(iPQ0, T2, Proj1(E0_data.A0))
-    else
-        R2_T = T2
-        S2_T = T2
-        RS2_T = T2
-    end
-    @assert xDBLe(xP1, a24_0, ExponentFull - e - 2) == Proj1(T1.X, T1.Z)
-    @assert xDBLe(xP2, a24_0, ExponentFull - e - 2) == Proj1(T2.X, T2.Z)
-    @assert xR1_T == Proj1(R1_T.X, R1_T.Z)
-    @assert xS1_T == Proj1(S1_T.X, S1_T.Z)
-    @assert xRS1_T == Proj1(RS1_T.X, RS1_T.Z)
-    @assert xR2_T == Proj1(R2_T.X, R2_T.Z)
-    @assert xS2_T == Proj1(S2_T.X, S2_T.Z)
-    @assert xRS2_T == Proj1(RS2_T.X, RS2_T.Z)
-    # end
-
+    # compute R + T for odd torsion points
     odd_x_points_1 = Proj1{FqFieldElem}[]
     odd_x_points_2 = Proj1{FqFieldElem}[]
     if compute_odd_points
-        T1 = Point(E0_data.A0, xDBLe(xP1, a24_0, ExponentFull - e - 2))
-        T2 = Point(E0_data.A0, xDBLe(xP2, a24_0, ExponentFull - e - 2))
+        P0, Q0 = E0_data.P2e, E0_data.Q2e
+        T1 = add(mult(M1[1, 1], P0, Proj1(E0_data.A0)), mult(M1[2, 1], Q0, Proj1(E0_data.A0)), Proj1(E0_data.A0))
+        T2 = add(mult(M2[1, 1], P0, Proj1(E0_data.A0)), mult(M2[2, 1], Q0, Proj1(E0_data.A0)), Proj1(E0_data.A0))
         for basis in E0_data.OddTorsionBases
             Pb1, Pb2 = basis
             if gamma == Quaternion_1
@@ -174,32 +138,6 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
         odd_x_points_2 = images[10:end]
     end
 
-    if compute_odd_points
-        xT1 = xDBLe(xP1, a24_1, ExponentFull - e - 2)
-        xT2 = xDBLe(xP2, a24_2, ExponentFull - e - 2)
-        for i in 1:6
-            if i % 2 == 1
-                xP = odd_x_points_1[i]
-                @assert is_infinity(ladder(27, xP, a24_1))
-                @assert !is_infinity(ladder(9, xP, a24_1))
-                xP = odd_x_points_2[i]
-                if !is_infinity(xP)
-                    @assert is_infinity(ladder(27, xP, a24_2))
-                    @assert !is_infinity(ladder(9, xP, a24_2))
-                end
-            else
-                tmp = x_add_sub(odd_x_points_1[i-1], xT1, a24_1)
-                if tmp != odd_x_points_1[i]
-                    @assert odd_x_points_1[i] == xADD(odd_x_points_1[i-1], xT1, tmp)
-                end
-                tmp = x_add_sub(odd_x_points_2[i-1], xT2, a24_2)
-                if tmp != odd_x_points_2[i]
-                    @assert odd_x_points_2[i] == xADD(odd_x_points_2[i-1], xT2, tmp)
-                end
-            end
-        end
-    end
-
     P1P2 = CouplePoint(xP1, xP2)
     Q1Q2 = CouplePoint(xQ1, xQ2)
     PQ1PQ2 = CouplePoint(xPQ1, xPQ2)
@@ -226,22 +164,6 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
     eval_points_T = vcat([R1R2_T, S1S2_T, RS1RS2_T], odd_couple_points_T)
     Es, images = product_isogeny_sqrt(a24_1, a24_2, P1P2, Q1Q2, PQ1PQ2, eval_points, eval_points_T, ExponentFull - e, strategy)
 
-    # check the pairing
-    for idx in 1:2
-        xP, xQ, xPQ = images[1][idx], images[2][idx], images[3][idx]
-        A = Es[idx]
-        w0 = E0_data.Weil_P2eQ2e
-        w1 = Weil_pairing_2power(affine(A), xP, xQ, xPQ, ExponentFull)
-        println(idx, ": pairing: ", w1 == w0^d)
-
-        odd_images = [image[idx] for image in images[4:end]]
-        for xPdd in odd_images
-            println("order check: ", is_infinity(ladder(27, xPdd, A_to_a24(A))))
-            println("             ", !is_infinity(ladder(9, xPdd, A_to_a24(A))))
-        end
-    end
-    # end
-
     idx = 1
     xP, xQ, xPQ = images[1][idx], images[2][idx], images[3][idx]
     A = Es[idx]
@@ -254,7 +176,6 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
     A = Es[idx]
     odd_images = [image[idx] for image in images[4:end]]
 
-    println("idx: ", idx, " e:", e)
     return A_to_a24(A), xP, xQ, xPQ, odd_images, LeftIdeal(alpha, d)
 end
 
