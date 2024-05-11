@@ -31,38 +31,30 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
     if (alpha + deg_dim2) % 2 == 1
         # the first (2,2)-isogeny is E0^2 -> E0^2 represented by the matrix [1 -1; 1 1]
         println("1 case")
-        xP1, xQ1, xPQ1 = action_on_torsion_basis(-alpha - d, E0_data)
-        xP2, xQ2, xPQ2 = action_on_torsion_basis(alpha - d, E0_data)
-        xR1, xS1, xRS1 = xP0, xQ0, xPQ0
-        xR2, xS2, xRS2 = xP0, xQ0, xPQ0
-        n = norm(alpha + d)
-        beta1 = -alpha - d
-        beta2 = alpha - d
+        beta1 = -d - alpha
+        beta2 = -d + alpha
         gamma = Quaternion_1
+        xR1, xS1, xRS1 = xP0, xQ0, xPQ0
+        xR2, xS2, xRS2 = xP0, xQ0, xPQ0    
     elseif (alpha + deg_dim2*Quaternion_i) % 2 == Quaternion_i
         # the first (2,2)-isogeny is E0^2 -> E0^2 represented by the matrix [1 i; i 1]
         println("i case")
-        xP1, xQ1, xPQ1 = action_on_torsion_basis(Quaternion_i*alpha - d, E0_data)
-        xP2, xQ2, xPQ2 = action_on_torsion_basis(alpha - d*Quaternion_i, E0_data)
-        xR1, xS1, xRS1 = xP0, xQ0, xPQ0
-        xR2, xS2, xRS2 = -xP0, -xQ0, -xPQ0
-        n = norm(Quaternion_i * alpha - d)
         beta1 = Quaternion_i * alpha - d
         beta2 = alpha - d * Quaternion_i
         gamma = Quaternion_i    
-    else
-        xP1 = ladder(deg_dim2 - d, xP0, a24_0)
-        xQ1 = ladder(deg_dim2 - d, xQ0, a24_0)
-        xPQ1 = ladder(deg_dim2 - d, xPQ0, a24_0)
-        xP2, xQ2, xPQ2 = action_on_torsion_basis(alpha, E0_data)
-        O0 = infinity_point(parent(a24_0.X))
         xR1, xS1, xRS1 = xP0, xQ0, xPQ0
-        xR2, xS2, xRS2 = O0, O0, O0
-        n = 1
+        xR2, xS2, xRS2 = -xP0, -xQ0, -xPQ0
+    else
         beta1 = -d * Quaternion_1
         beta2 = alpha
         gamma = Quaternion_0
+        O0 = infinity_point(parent(a24_0.X))
+        xR1, xS1, xRS1 = xP0, xQ0, xPQ0
+        xR2, xS2, xRS2 = O0, O0, O0
     end
+    n = norm(beta1)
+    xP1, xQ1, xPQ1 = action_on_torsion_basis(beta1, E0_data)
+    xP2, xQ2, xPQ2 = action_on_torsion_basis(beta2, E0_data)
 
     a24_1= a24_0
     a24_2 = a24_0

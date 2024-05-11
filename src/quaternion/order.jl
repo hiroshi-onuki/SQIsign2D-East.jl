@@ -54,12 +54,20 @@ function Base.:+(x::QOrderElem, a::Integer)
     return QOrderElem(x.a + a, x.b, x.c, x.d)
 end
 
+function Base.:+(a::Integer, x::QOrderElem)
+    return QOrderElem(a + x.a, x.b, x.c, x.d)
+end
+
 function Base.:-(x::QOrderElem, y::QOrderElem)
     return QOrderElem(x.a - y.a, x.b - y.b, x.c - y.c, x.d - y.d)
 end
 
 function Base.:-(x::QOrderElem, a::Integer)
     return QOrderElem(x.a - a, x.b, x.c, x.d)
+end
+
+function Base.:-(a::Integer, x::QOrderElem)
+    return QOrderElem(a - x.a, -x.b, -x.c, -x.d)
 end
 
 function Base.:-(x::QOrderElem)
