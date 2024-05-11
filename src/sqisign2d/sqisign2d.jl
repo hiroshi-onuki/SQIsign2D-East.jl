@@ -90,8 +90,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     alpha, c, d, found = element_for_response(I, nI, ExponentForTorsion, [3, 3 ,3], Dsec)
     if found
         q = div(norm(alpha), d*nI)
-        @assert q < BigInt(1) << c
-        @assert q * ((BigInt(1) << c) - q) < BigInt(1) << ExponentFull
+        alpha, found = GeneralizedRandomIsogImages(q * ((BigInt(1) << c) - q) , a24pub, Isec, Dsec, global_data)
     end
     return c, d, found
 end

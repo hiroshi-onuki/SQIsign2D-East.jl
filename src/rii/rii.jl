@@ -179,22 +179,20 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
     return A_to_a24(A), xP, xQ, xPQ, odd_images, LeftIdeal(alpha, d)
 end
 
-function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, I::LeftIdeal, nI::BigInt, E0_data::E0Data) where T <: RingElem
+function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, I::LeftIdeal, nI::BigInt, global_data::GlobalData) where T <: RingElem
     N = d*((BigInt(1) << ExponentFull) - d)
     alpha = Quaternion_0
+    
     found = false
-    while !found
-        C, D, N_N_CD = 0, 0, 0
-        while true
-            C, D = EichlerModConstraint(I, nI, Quaternion_1, Quaternion_1, false)
-            N_CD = p * (C^2 + D^2)
-            return quadratic_residue_symbol(N_CD, nI)
-            N_N_CD = (N * invmod(N_CD, nI)) % nI
-            quadratic_residue_symbol(N_N_CD, nI) == 1 && break
-        end
-        lambda = sqrt_mod(4*N_N_CD, nI)
 
-        alpha, found = FullStrongApproximation(nI, C, D, lambda, 4*N, KLPT_signing_number_strong_approx)
-    end
-    println("alpha: ", alpha, " found: ", found)
+    C, D = EichlerModConstraint(I, nI, Quaternion_1, Quaternion_1, false)
+    N_CD = p * (C^2 + D^2)
+    N_N_CD = (N * invmod(N_CD, nI)) % nI
+    lambda = sqrt_mod(4*N_N_CD, nI)
+    @assert quadratic_residue_symbol(N_N_CD, nI) == 1
+    @assert 4*N > nI^3 * p
+
+    alpha, found = FullStrongApproximation(nI, C, D, lambda, 4*N, KLPT_signing_number_strong_approx)
+
+    return alpha, found
 end
