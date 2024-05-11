@@ -44,7 +44,7 @@ end
 
 function commitment(global_data::GlobalData)
     D_sec = random_secret_prime()
-    a24, xP, xQ, xPQ, _, I_sec = RandIsogImages(D_sec, global_data, false)
+    a24, xP, xQ, xPQ, I_sec = RandIsogImages(D_sec, global_data, false)
     a24, (xP, xQ, xPQ) = Montgomery_normalize(a24, [xP, xQ, xPQ])
     A = Montgomery_coeff(a24)
     xPc, xQc, xPQc = torsion_basis(a24, SQISIGN_challenge_length)
