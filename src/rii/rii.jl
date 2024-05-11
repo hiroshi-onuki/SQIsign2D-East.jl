@@ -134,16 +134,9 @@ function compute_22isog_from_Esq(a24::Proj1{T}, d::BigInt, alpha::QOrderElem, xP
             K = xDBLe(xP2, a24, ExponentFull-e)
         end
         eval_points = vcat([xP2, xQ2, xPQ2, xR2, xS2, xRS2, xR2_T, xS2_T, xRS2_T], odd_x_points_2)
-        a24_2, images = two_e_iso(a24_0, K, e-1, eval_points)
+        a24_2, images = two_e_iso(a24, K, e-1, eval_points)
         xP2, xQ2, xPQ2, xR2, xS2, xRS2, xR2_T, xS2_T, xRS2_T = images[1:9]
         odd_x_points_2 = images[10:end]
-    end
-    for i in 1:div(length(odd_x_points_1), 2)
-        n = 2*i - 1
-        @assert is_infinity(ladder(27, odd_x_points_1[n], a24_1))
-        @assert !is_infinity(ladder(9, odd_x_points_1[n], a24_1))
-        @assert is_infinity(ladder(27, odd_x_points_2[n], a24_2))
-        @assert !is_infinity(ladder(9, odd_x_points_2[n], a24_2))
     end
 
     P1P2 = CouplePoint(xP1, xP2)
@@ -202,11 +195,11 @@ function RandIsogImages(d::BigInt, global_data::GlobalData, compute_odd_points::
 
     alpha, _ = FullRepresentInteger(d*(deg_dim2 - d))
 
-    A, xP, xQ, xPQ, odd_images = compute_22isog_from_Esq(a24_0, d, alpha, xP0, xQ0, xPQ0, global_data, compute_odd_points)
+    a24, xP, xQ, xPQ, odd_images = compute_22isog_from_Esq(a24_0, d, alpha, xP0, xQ0, xPQ0, global_data, compute_odd_points)
     if compute_odd_points
-        return A_to_a24(A), xP, xQ, xPQ, odd_images, LeftIdeal(alpha, d)
+        return a24, xP, xQ, xPQ, odd_images, LeftIdeal(alpha, d)
     else
-        return A_to_a24(A), xP, xQ, xPQ, LeftIdeal(alpha, d)
+        return a24, xP, xQ, xPQ, LeftIdeal(alpha, d)
     end
 end
 
