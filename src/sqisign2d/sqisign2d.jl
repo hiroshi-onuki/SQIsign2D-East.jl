@@ -27,8 +27,10 @@ function random_secret_prime()
 end
 
 function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, I::LeftIdeal, nI::BigInt,
-                        q::Bigint, c::Int, global_data::GlobalData) where T <: Integer
-    
+                        q::BigInt, c::Int, global_data::GlobalData) where T <: Integer
+    d = q * ((BigInt(1) << c) - q)
+    a24d, xPd, xQd, xPQd = GeneralizedRandomIsogImages(d, a24, xP, xQ, xPQ, I, nI, global_data)
+
 
 end
 
