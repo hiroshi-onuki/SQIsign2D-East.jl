@@ -224,7 +224,6 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
     @assert found
     @assert norm(alpha) == N
 
-    println("d = ", d)
     a24, xP, xQ, xPQ, _ = compute_22isog_from_Esq(a24, d, alpha, xP, xQ, xPQ, global_data)
 
     return a24, xP, xQ, xPQ

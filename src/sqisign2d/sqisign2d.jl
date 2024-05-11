@@ -26,6 +26,12 @@ function random_secret_prime()
     return n
 end
 
+function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, I::LeftIdeal, nI::BigInt,
+                        q::Bigint, c::Int, global_data::GlobalData) where T <: Integer
+    
+
+end
+
 function key_gen(global_data::GlobalData)
     D_sec = random_secret_prime()
     a24, xP, xQ, xPQ, odd_images, I_sec = RandIsogImages(D_sec, global_data, true)
