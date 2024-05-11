@@ -27,11 +27,24 @@ function random_secret_prime()
 end
 
 function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, I::LeftIdeal, nI::BigInt,
-                        q::BigInt, c::Int, global_data::GlobalData) where T <: Integer
+                        q::BigInt, c::Int, global_data::GlobalData) where T <: RingElem
     d = q * ((BigInt(1) << c) - q)
     a24d, xPd, xQd, xPQd = GeneralizedRandomIsogImages(d, a24, xP, xQ, xPQ, I, nI, global_data)
 
+    q_inv = invmod(q, BigInt(1) << c)
+    xP = xDBLe(xP, a24, ExponentFull - c)
+    xQ = xDBLe(xQ, a24, ExponentFull - c)
+    xPQ = xDBLe(xPQ, a24, ExponentFull - c)
+    xPd = xDBLe(xPd, a24d, ExponentFull - c)
+    xQd = xDBLe(xQd, a24d, ExponentFull - c)
+    xPQd = xDBLe(xPQd, a24d, ExponentFull - c)
+    xPd = ladder(q_inv, xPd, a24d)
+    xQd = ladder(q_inv, xQd, a24d)
+    xPQd = ladder(q_inv, xPQd, a24d)
 
+    a24aux, xPaux, xQaux, xPQaux, images = d2isogeny(a24, a24d, xP, xQ, xPQ, xPd, xQd, xPQd, c, q, Proj1{FqFieldElem}[], global_data)
+
+    return a24aux, xPaux, xQaux, xPQaux, images
 end
 
 function key_gen(global_data::GlobalData)
@@ -98,7 +111,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     alpha, c, d, found = element_for_response(I, nI, ExponentForTorsion, [3, 3 ,3], Dsec)
     if found
         q = div(norm(alpha), d*nI)
-        a24, xP, xQ, xPQ = GeneralizedRandomIsogImages(q * ((BigInt(1) << c) - q), a24pub, xPsec, xQsec, xPQsec, Isec, Dsec, global_data)
+        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, Isec, Dsec, q, c, global_data)
     end
     return c, d, found
 end

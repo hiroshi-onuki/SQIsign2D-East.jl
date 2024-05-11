@@ -168,5 +168,58 @@ function d2isogeny_form_Esquare(a24::Proj1{T}, d::BigInt, alpha::QOrderElem, xP0
     return A_to_a24(A), xP, xQ, xPQ, odd_images
 end
 
-function d2isogeny()
+function d2isogeny(a24_1::Proj1{T}, a24_2::Proj1{T}, xP1::Proj1{T}, xQ1::Proj1{T}, xPQ1::Proj1{T}, xP2::Proj1{T}, xQ2::Proj1{T}, xPQ2::Proj1{T},
+                    exp::Int, d::BigInt, eval_points::Vector{Proj1{T}}, global_data::GlobalData) where T <: RingElem
+    # compute x(R + T) for R in eval_points
+    xP1T = ladder(1 + (BigInt(1) << (exp - 2)), xP1, a24_1)
+    xQ1T = ladder3pt(BigInt(1) << (exp - 2), xQ1, xP1, xPQ1, a24_1)
+    xPQ1T = ladder3pt((BigInt(1) << exp) - 1 - (BigInt(1) << (exp - 2)), xQ1, xP1, xPQ1, a24_1)
+    eval_points_T = [xP1T, xQ1T, xPQ1T]
+    xT = xDBLe(xP1, a24_1, exp - 2)
+    for xR in eval_points
+        xRT = x_add_sub(xR, xT, a24_1)
+        push!(eval_points_T, xRT)
+    end
+    eval_points = vcat([xP1, xQ1, xPQ1], eval_points)
+
+    P1P2 = CouplePoint(xP1, xP2)
+    Q1Q2 = CouplePoint(xQ1, xQ2)
+    PQ1PQ2 = CouplePoint(xPQ1, xPQ2)
+    O2 = infinity_point(global_data.Fp2)
+    xT2 = xDBLe(xP2, a24_2, exp - 2)
+    eval_couple_points = CouplePoint{FqFieldElem}[]
+    for xR in eval_points
+        push!(eval_couple_points, CouplePoint(xR, O2))
+    end
+    eval_couple_points_T = CouplePoint{FqFieldElem}[]
+    for xRT in eval_points_T
+        push!(eval_couple_points_T, CouplePoint(xRT, xT2))
+    end
+
+    if haskey(StrategiesDim2, exp)
+        strategy = StrategiesDim2[exp]
+    else
+        strategy = compute_strategy(exp - 2, 2, 1)
+    end
+    Es, images = product_isogeny_sqrt(a24_1, a24_2, P1P2, Q1Q2, PQ1PQ2, eval_couple_points, eval_couple_points_T, exp, strategy)
+
+    idx = 1
+    xP, xQ, xPQ = images[1][idx], images[2][idx], images[3][idx]
+    A = Es[idx]
+    w0 = Weil_pairing_2power(Montgomery_coeff(a24_1), xP1, xQ1, xPQ1, exp)
+    w1 = Weil_pairing_2power(affine(A), xP, xQ, xPQ, exp)
+    if w1 != w0^d
+        idx = 2
+    end
+    xP, xQ, xPQ = images[1][idx], images[2][idx], images[3][idx]
+    A = Es[idx]
+    images = [image[idx] for image in images[4:end]]
+
+    # check the pairing
+    w1 = Weil_pairing_2power(affine(A), xP, xQ, xPQ, exp)
+    @assert w1 == w0^d
+    # end
+
+    return A_to_a24(A), xP, xQ, xPQ, images
+    
 end
