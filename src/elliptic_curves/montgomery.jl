@@ -1,5 +1,5 @@
 export xDBL, xADD, xDBLADD, xDBLe, ladder, ladder3pt, x_add_sub,
-    linear_comb_2_e, random_point, random_point_order_2power,
+    linear_comb_2_e, random_point, random_point_order_2power, random_point_order_l,
     Montgomery_coeff, A_to_a24, a24_to_A, jInvariant_a24, jInvariant_A,
     two_e_iso, odd_isogeny, torsion_basis, isomorphism_Montgomery,
     Montgomery_normalize, complete_baisis
@@ -13,6 +13,15 @@ function random_point(A::T) where T <: RingElem
     end
 end
 
+# random point on a Montgomery curve: y^2 = x^3 + Ax^2 + x
+function random_point(A::Proj1{T}) where T <: RingElem
+    F = parent(A.X)
+    while true
+        x = rand(F)
+        is_square(A.Z^2*x^3 + A.X*A.Z*x^2 + A.Z^2*x) && return Proj1(x)
+    end
+end
+
 # random point on a Montgomery curve with order 2^e
 function random_point_order_2power(A::T, curve_order::Integer, e::Integer) where T <: RingElem
     F = parent(A)
@@ -22,6 +31,19 @@ function random_point_order_2power(A::T, curve_order::Integer, e::Integer) where
         P = random_point(A)
         P = ladder(n, P, a24)
         if !is_infinity(xDBLe(P, a24, e-1))
+            return P
+        end
+    end
+end
+
+# random point on a Montgomery curve with prime order l
+function random_point_order_l(a24::Proj1{T}, curve_order::Integer, l::Integer) where T <: RingElem
+    n = div(curve_order, l)
+    A = a24_to_A(a24)
+    while true
+        P = random_point(A)
+        P = ladder(n, P, a24)
+        if !is_infinity(P)
             return P
         end
     end

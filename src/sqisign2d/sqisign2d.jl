@@ -116,9 +116,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
 
     if found
         q = div(norm(alpha), d*nI)
-        println(q % 3)
-        println((BigInt(1) << c - q) % 3)
-
         n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
         odd_kernels = Proj1{FqFieldElem}[]
         ns = 1
@@ -147,13 +144,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
 
         # compute the auxiliary ellitic curve
         a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, c, global_data)
-        @assert is_infinity(xDBLe(xPaux, a24aux, c))
-        @assert is_infinity(xDBLe(xQaux, a24aux, c))
-        @assert is_infinity(xDBLe(xPQaux, a24aux, c))
-        @assert !is_infinity(xDBLe(xPaux, a24aux, c-1))
-        @assert !is_infinity(xDBLe(xQaux, a24aux, c-1))
-        @assert !is_infinity(xDBLe(xPQaux, a24aux, c-1))
-
         dd = div(d, ns^2)
         xPaux, xQaux, xPQaux = ladder(ns, xPaux, a24aux), ladder(ns, xQaux, a24aux), ladder(ns, xPQaux, a24aux)
         for i in 1:n_odd_l
@@ -163,19 +153,31 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
                 dd = div(dd, l)
                 e += 1
             end
-            for k in 1:e
-                K = ladder(l^(e-k), images[i], a24aux)
-                @assert is_infinity(ladder(l, K, a24aux))
-                @assert !is_infinity(K)
+            # determine the order of image[i] 
+            K = images[i]
+            f = 0
+            while !is_infinity(K)
+                K = ladder(l, K, a24aux)
+                f += 1
+            end
+            for k in 1:f
+                K = ladder(l^(f - k), images[i], a24aux)
                 a24aux, tmp = odd_isogeny(a24aux, K, l, vcat([xPaux, xQaux, xPQaux], images))
                 xPaux, xQaux, xPQaux = tmp[1:3]
                 images = tmp[4:end]
-                @assert is_infinity(xDBLe(xPaux, a24aux, c))
-                @assert is_infinity(xDBLe(xQaux, a24aux, c))
-                @assert is_infinity(xDBLe(xPQaux, a24aux, c))
-                @assert !is_infinity(xDBLe(xPaux, a24aux, c-1))
-                @assert !is_infinity(xDBLe(xQaux, a24aux, c-1))
-                @assert !is_infinity(xDBLe(xPQaux, a24aux, c-1))
+            end
+            
+            # compute the rest l^(e - f)-isogeny
+            n = div(e - f, 2)
+            if n > 0
+                xPaux, xQaux, xPQaux = ladder(l^n, xPaux, a24aux), ladder(l^n, xQaux, a24aux), ladder(l^n, xPQaux, a24aux)
+            end
+            if (e - f) % 2 == 1
+                K = random_point_order_l(a24aux, p + 1, l)
+                @assert is_infinity(ladder(l, K, a24aux))
+                a24aux, tmp = odd_isogeny(a24aux, K, l, vcat([xPaux, xQaux, xPQaux], images))
+                xPaux, xQaux, xPQaux = tmp[1:3]
+                images = tmp[4:end]
             end
         end
         @assert is_infinity(xDBLe(xPaux, a24aux, c))
