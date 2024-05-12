@@ -96,21 +96,27 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     A = pk
     a24pub = A_to_a24(A)
     Isec, Dsec, xPsec, xQsec, xPQsec = sk
+
+    # compute commitment
     Acom, (Icom, Dcom, xPcom, xQcom, xPQcom), Mcom = commitment(global_data)
 
-    c = challenge(Acom, m, global_data)
-
-    a, b = Mcom * [1, c]
+    # compute challenge and the pull-back of the corresponding ideal
+    cha = challenge(Acom, m, global_data)
+    a, b = Mcom * [1, cha]
     a, b, c, d = global_data.E0_data.Matrix_2ed_inv * [b, 0, -a, 0]
     alpha = SQIsign2D.Level1.QOrderElem(a, b, c, d)
     Icha = SQIsign2D.Level1.LeftIdeal(alpha, BigInt(1) << SQISIGN_challenge_length)
 
+    # find alpha in bar(Isec)IcomIcha suitable for the response
     Icomcha = SQIsign2D.Level1.intersection(Icom, Icha)
     I = SQIsign2D.Level1.involution_product(Isec, Icomcha)
     nI = Dsec * Dcom << SQISIGN_challenge_length
     alpha, c, d, found = element_for_response(I, nI, ExponentForTorsion, [3, 3 ,3], Dsec)
+
     if found
         q = div(norm(alpha), d*nI)
+        
+    
         a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, Isec, Dsec, q, c, global_data)
     end
     return c, d, found

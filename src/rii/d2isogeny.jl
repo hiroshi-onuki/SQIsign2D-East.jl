@@ -42,12 +42,12 @@ function d2isogeny_form_Esquare(a24::Proj1{T}, d::BigInt, alpha::QOrderElem, xP0
     e = max(e, 0)
 
     # compute R + T etc. for the gluing isogeny
-    M1 = quaternion_to_matrix((BigInt(1) << (ExponentFull - e - 2)) * beta1, E0_data)
+    M1 = quaternion_to_matrix((BigInt(1) << (ExponentFull - e - 2)) * beta1, E0_data.Matrices_2e)
     xR1_T = action_of_matrix([1 0; 0 0] + M1, a24, xP0, xQ0, xPQ0, true)
     xS1_T = action_of_matrix([0 0; 1 0] + M1, a24, xP0, xQ0, xPQ0, true)
     xRS1_T = action_of_matrix([1 0; -1 0] + M1, a24, xP0, xQ0, xPQ0, true)
-    M2 = quaternion_to_matrix((BigInt(1) << (ExponentFull - e - 2)) * beta2, E0_data)
-    Mg = quaternion_to_matrix(gamma, E0_data)
+    M2 = quaternion_to_matrix((BigInt(1) << (ExponentFull - e - 2)) * beta2, E0_data.Matrices_2e)
+    Mg = quaternion_to_matrix(gamma, E0_data.Matrices_2e)
     xR2_T = action_of_matrix(Mg*[1 0; 0 0] + M2, a24, xP0, xQ0, xPQ0, true)
     xS2_T = action_of_matrix(Mg*[0 0; 1 0] + M2, a24, xP0, xQ0, xPQ0, true)
     xRS2_T = action_of_matrix(Mg*[1 0; -1 0] + M2, a24, xP0, xQ0, xPQ0, true)
