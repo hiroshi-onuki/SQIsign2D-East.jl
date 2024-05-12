@@ -26,8 +26,8 @@ function random_secret_prime()
     return n
 end
 
-function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, I::LeftIdeal, nI::BigInt,
-                        q::BigInt, c::Int, global_data::GlobalData) where T <: RingElem
+function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, odd_points::Vector{Proj1{T}},
+                        I::LeftIdeal, nI::BigInt, q::BigInt, c::Int, global_data::GlobalData) where T <: RingElem
     d = q * ((BigInt(1) << c) - q)
     a24d, xPd, xQd, xPQd = GeneralizedRandomIsogImages(d, a24, xP, xQ, xPQ, I, nI, global_data)
 
@@ -42,7 +42,7 @@ function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}
     xQd = ladder(q_inv, xQd, a24d)
     xPQd = ladder(q_inv, xPQd, a24d)
 
-    a24aux, xPaux, xQaux, xPQaux, images = d2isogeny(a24, a24d, xP, xQ, xPQ, xPd, xQd, xPQd, c, q, Proj1{FqFieldElem}[], global_data)
+    a24aux, xPaux, xQaux, xPQaux, images = d2isogeny(a24, a24d, xP, xQ, xPQ, xPd, xQd, xPQd, c, q, odd_points, global_data)
 
     return a24aux, xPaux, xQaux, xPQaux, images
 end
@@ -60,7 +60,7 @@ function key_gen(global_data::GlobalData)
         @assert !is_infinity(ladder(9, xR, a24))
     end
 
-    return Montgomery_coeff(a24), (I_sec, D_sec, xP, xQ, xPQ)
+    return Montgomery_coeff(a24), (I_sec, D_sec, xP, xQ, xPQ, odd_images)
 end
 
 function commitment(global_data::GlobalData)
@@ -95,7 +95,7 @@ end
 function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     A = pk
     a24pub = A_to_a24(A)
-    Isec, Dsec, xPsec, xQsec, xPQsec = sk
+    Isec, Dsec, xPsec, xQsec, xPQsec, odd_images = sk
 
     # compute commitment
     Acom, (Icom, Dcom, xPcom, xQcom, xPQcom), Mcom = commitment(global_data)
@@ -115,9 +115,22 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
 
     if found
         q = div(norm(alpha), d*nI)
-        
-    
-        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, Isec, Dsec, q, c, global_data)
+
+        odd_kernels = Proj1{FqFieldElem}[]
+        for i in length(global_data.E0_data.DegreesOddTorsionBases)
+            l = global_data.E0_data.DegreesOddTorsionBases[i]
+            e = global_data.E0_data.ExponentsOddTorsionBases[i]
+            if d % l == 0
+                xPodd, xQodd, xPQodd = odd_images[3*(i-1)+1:3*i]
+                f = div(l^e, d)
+                xPodd = ladder(f, xPodd, a24pub)
+                xQodd = ladder(f, xQodd, a24pub)
+                xPQodd = ladder(f, xPQodd, a24pub)
+                Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, alpha, l, e, global_data.E0_data.Matrices_odd[i])
+                push!(odd_kernels, Kodd)
+            end
+        end
+        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, c, global_data)
     end
     return c, d, found
 end
