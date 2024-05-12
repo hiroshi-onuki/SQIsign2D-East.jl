@@ -26,9 +26,10 @@ function random_secret_prime()
     return n
 end
 
-function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, odd_points::Vector{Proj1{T}},
+function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, odd_images::Vector{Proj1{T}},
                         I::LeftIdeal, nI::BigInt, q::BigInt, c::Int, global_data::GlobalData) where T <: RingElem
-    d = q * ((BigInt(1) << c) - q)
+    r = (BigInt(1) << c) - q
+    d = q * r
     a24d, xPd, xQd, xPQd = GeneralizedRandomIsogImages(d, a24, xP, xQ, xPQ, I, nI, global_data)
 
     q_inv = invmod(q, BigInt(1) << c)
@@ -42,7 +43,7 @@ function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}
     xQd = ladder(q_inv, xQd, a24d)
     xPQd = ladder(q_inv, xPQd, a24d)
 
-    a24aux, xPaux, xQaux, xPQaux, images = d2isogeny(a24, a24d, xP, xQ, xPQ, xPd, xQd, xPQd, c, q, odd_points, global_data)
+    a24aux, xPaux, xQaux, xPQaux, images = d2isogeny(a24, a24d, xP, xQ, xPQ, xPd, xQd, xPQd, c, r, odd_images, global_data)
 
     return a24aux, xPaux, xQaux, xPQaux, images
 end
@@ -115,23 +116,77 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
 
     if found
         q = div(norm(alpha), d*nI)
+        println(q % 3)
+        println((BigInt(1) << c - q) % 3)
 
+        n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
         odd_kernels = Proj1{FqFieldElem}[]
-        for i in length(global_data.E0_data.DegreesOddTorsionBases)
+        ns = 1
+        for i in 1:n_odd_l
             l = global_data.E0_data.DegreesOddTorsionBases[i]
             e = global_data.E0_data.ExponentsOddTorsionBases[i]
             if d % l == 0
-                xPodd, xQodd, xPQodd = odd_images[3*(i-1)+1:3*i]
-                f = div(l^e, d)
-                xPodd = ladder(f, xPodd, a24pub)
-                xQodd = ladder(f, xQodd, a24pub)
-                xPQodd = ladder(f, xPQodd, a24pub)
-                Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, alpha, l, e, global_data.E0_data.Matrices_odd[i])
+                f = Int(log(l, gcd(d, l^e)))
+                while alpha % l == Quaternion_0
+                    alpha = div(alpha, l)
+                    ns *= l
+                    f -= 2
+                end
+                if f > 0
+                    xPodd, xQodd, xPQodd = odd_images[3*(i-1)+1:3*i]
+                    xPodd = ladder(l^(e-f), xPodd, a24pub)
+                    xQodd = ladder(l^(e-f), xQodd, a24pub)
+                    xPQodd = ladder(l^(e-f), xPQodd, a24pub)
+                    Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, alpha, l, f, global_data.E0_data.Matrices_odd[i])
+                else
+                    Kodd = infinity_point(global_data.Fp2)
+                end
                 push!(odd_kernels, Kodd)
             end
         end
+
+        # compute the auxiliary ellitic curve
         a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, c, global_data)
+        @assert is_infinity(xDBLe(xPaux, a24aux, c))
+        @assert is_infinity(xDBLe(xQaux, a24aux, c))
+        @assert is_infinity(xDBLe(xPQaux, a24aux, c))
+        @assert !is_infinity(xDBLe(xPaux, a24aux, c-1))
+        @assert !is_infinity(xDBLe(xQaux, a24aux, c-1))
+        @assert !is_infinity(xDBLe(xPQaux, a24aux, c-1))
+
+        dd = div(d, ns^2)
+        xPaux, xQaux, xPQaux = ladder(ns, xPaux, a24aux), ladder(ns, xQaux, a24aux), ladder(ns, xPQaux, a24aux)
+        for i in 1:n_odd_l
+            l = global_data.E0_data.DegreesOddTorsionBases[i]
+            e = 0
+            while dd % l == 0
+                dd = div(dd, l)
+                e += 1
+            end
+            for k in 1:e
+                K = ladder(l^(e-k), images[i], a24aux)
+                @assert is_infinity(ladder(l, K, a24aux))
+                @assert !is_infinity(K)
+                a24aux, tmp = odd_isogeny(a24aux, K, l, vcat([xPaux, xQaux, xPQaux], images))
+                xPaux, xQaux, xPQaux = tmp[1:3]
+                images = tmp[4:end]
+                @assert is_infinity(xDBLe(xPaux, a24aux, c))
+                @assert is_infinity(xDBLe(xQaux, a24aux, c))
+                @assert is_infinity(xDBLe(xPQaux, a24aux, c))
+                @assert !is_infinity(xDBLe(xPaux, a24aux, c-1))
+                @assert !is_infinity(xDBLe(xQaux, a24aux, c-1))
+                @assert !is_infinity(xDBLe(xPQaux, a24aux, c-1))
+            end
+        end
+        @assert is_infinity(xDBLe(xPaux, a24aux, c))
+        @assert is_infinity(xDBLe(xQaux, a24aux, c))
+        @assert is_infinity(xDBLe(xPQaux, a24aux, c))
+        @assert !is_infinity(xDBLe(xPaux, a24aux, c-1))
+        @assert !is_infinity(xDBLe(xQaux, a24aux, c-1))
+        @assert !is_infinity(xDBLe(xPQaux, a24aux, c-1))
+
+        return Acom, Montgomery_coeff(a24aux), xPaux, xQaux, xPQaux, odd_kernels, q, c, d, true
     end
-    return c, d, found
+    return nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, false
 end
 
