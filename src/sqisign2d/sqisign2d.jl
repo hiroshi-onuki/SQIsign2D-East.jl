@@ -193,13 +193,13 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         Aaux = Montgomery_coeff(a24aux)
         xPaux, xQaux, xPQaux = action_of_matrix(Mres, a24aux, xPaux, xQaux, xPQaux)
 
-        return (Acom, Aaux, xPaux, xQaux, xPQaux, odd_kernels, q, d), true
+        return (Acom, Aaux, xPaux, xQaux, xPQaux, odd_kernels, d), true
     end
     return nothing, false
 end
 
 function verify(pk::FqFieldElem, sign, m::String, global_data::GlobalData)
-    Acom, Aaux, xPaux, xQaux, xPQaux, odd_kernels, q, d = sign
+    Acom, Aaux, xPaux, xQaux, xPQaux, odd_kernels, d = sign
     a24pub = A_to_a24(pk)
     a24com = A_to_a24(Acom)
     a24aux = A_to_a24(Aaux)
@@ -228,7 +228,7 @@ function verify(pk::FqFieldElem, sign, m::String, global_data::GlobalData)
         end
     end
 
-    j0 = jInvariant_A(a24mid)
+    j0 = jInvariant_a24(a24mid)
     j1 = jInvariant_A(Es[1])
     j2 = jInvariant_A(Es[2])
 
