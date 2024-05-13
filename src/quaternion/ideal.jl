@@ -73,11 +73,12 @@ function larger_ideal(I::LeftIdeal, N::Integer)
 end
 
 # return alpha in I s.t. q_I(alpha) is odd and
-# there exist c, d s.t. d | q_I(alpha), d | prod(factors),
-# q_I(alpha)/d < 2^c,
+# there exist d s.t. d | q_I(alpha), d | prod(factors),
+# q_I(alpha)/d < 2^a,
 # and -D*(2^ExponentFull - D) is a quadratic residue modulo N, where D = q_I(alpha)/d(2^c - q_I(alpha)/d)
-function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{Int}, N::BigInt)
+function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{Tuple{Int, Int}}, N::BigInt)
     q(x, y) = quadratic_form(QOrderElem(x), QOrderElem(y))
+    bound = BigInt(1) << a
 
     # LLL reduction
     Imatrix = ideal_to_matrix(I)
@@ -90,7 +91,7 @@ function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{
     U = zeros(Rational{Integer}, 4)
     L = zeros(Integer, 4)
     x = zeros(Integer, 4)
-    S[4] = (nI * prod(factors)) << a
+    S[4] = (nI * prod([l^e for (l, e) in factors])) << a
 
     i = 4
     tmp = div(S[i] * denominator(U[i])^2, q[i,i])
@@ -119,37 +120,40 @@ function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{
             if x != zeros(Integer, 4)
                 v = sum([x[i]*red_basis[i] for i in 1:4])
                 alpha = QOrderElem(v[1], v[2], v[3], v[4])
+                g = gcd(alpha)
+                g = div(g, gcd(g, nI))
+                alpha = div(alpha, g)
                 newN = div(norm(alpha), nI)
                 if newN % 2 == 1
                     divisors = []
-                    for f in factors
-                        if newN % f == 0
-                            divisors = vcat(divisors, [d * f for d in divisors], [f])
+                    for (l, e) in factors
+                        @assert gcd(l, nI) == 1
+                        for ed in 1:e
+                            if newN % l^ed == 0
+                                divisors = vcat(divisors, [d * l for d in divisors])
+                                ed == 1 && push!(divisors, l)
+                            end
                         end
                     end
-                    for d in Set(divisors)
+                    for d in divisors
                         if newN % d == 0
                             newNd = div(newN, d)
-                            c = a
-                            b = BigInt(1) << c
-                            while newNd < b
-                                D = newNd * (b - newNd)
+                            if newNd < bound
+                                D = newNd * (bound - newNd)
                                 D = D * ((BigInt(1) << ExponentFull) - D)
                                 if quadratic_residue_symbol(-D, N) == 1
-                                    newNd * (b - newNd) < BigInt(1) << ExponentFull && return alpha, c, d, true
+                                    newNd * (bound - newNd) < BigInt(1) << ExponentFull && return alpha, d, true
                                 end
-                                c -= 1
-                                b = BigInt(1) >> 1
                             end
                         end
                     end
                 end
             else
-                return Quaternion_0, 0, 0, false
+                return Quaternion_0, 0, false
             end
         end
     end
-    return Quaternion_0, 0, 0, false
+    return Quaternion_0, 0, false
 end
 
 # return coefficients q_i,j s.t. Nrd(x) = sum_i q_i,i*(x_i + sum_j q_i,j*x_j)^2, where x = sum_i x_iI[i].

@@ -112,29 +112,23 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     Icomcha = SQIsign2D.Level1.intersection(Icom, Icha)
     I = SQIsign2D.Level1.involution_product(Isec, Icomcha)
     nI = Dsec * Dcom << SQISIGN_challenge_length
-    alpha, c, d, found = element_for_response(I, nI, ExponentForTorsion, [3, 3 ,3], Dsec)
+    alpha, d, found = element_for_response(I, nI, ExponentForTorsion, [(3, 3)], Dsec)
 
     if found
         q = div(norm(alpha), d*nI)
         n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
         odd_kernels = Proj1{FqFieldElem}[]
-        ns = 1
         for i in 1:n_odd_l
             l = global_data.E0_data.DegreesOddTorsionBases[i]
             e = global_data.E0_data.ExponentsOddTorsionBases[i]
             if d % l == 0
                 f = Int(log(l, gcd(d, l^e)))
-                while alpha % l == Quaternion_0
-                    alpha = div(alpha, l)
-                    ns *= l
-                    f -= 2
-                end
                 if f > 0
                     xPodd, xQodd, xPQodd = odd_images[3*(i-1)+1:3*i]
                     xPodd = ladder(l^(e-f), xPodd, a24pub)
                     xQodd = ladder(l^(e-f), xQodd, a24pub)
                     xPQodd = ladder(l^(e-f), xPQodd, a24pub)
-                    Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, alpha, l, f, global_data.E0_data.Matrices_odd[i])
+                    Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
                 else
                     Kodd = infinity_point(global_data.Fp2)
                 end
@@ -143,9 +137,8 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         end
 
         # compute the auxiliary ellitic curve
-        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, c, global_data)
-        dd = div(d, ns^2)
-        xPaux, xQaux, xPQaux = ladder(ns, xPaux, a24aux), ladder(ns, xQaux, a24aux), ladder(ns, xPQaux, a24aux)
+        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, ExponentForTorsion, global_data)
+        dd = d
         for i in 1:n_odd_l
             l = global_data.E0_data.DegreesOddTorsionBases[i]
             e = 0
@@ -180,12 +173,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
                 images = tmp[4:end]
             end
         end
-        @assert is_infinity(xDBLe(xPaux, a24aux, c))
-        @assert is_infinity(xDBLe(xQaux, a24aux, c))
-        @assert is_infinity(xDBLe(xPQaux, a24aux, c))
-        @assert !is_infinity(xDBLe(xPaux, a24aux, c-1))
-        @assert !is_infinity(xDBLe(xQaux, a24aux, c-1))
-        @assert !is_infinity(xDBLe(xPQaux, a24aux, c-1))
 
         return Acom, Montgomery_coeff(a24aux), xPaux, xQaux, xPQaux, odd_kernels, q, c, d, true
     end
