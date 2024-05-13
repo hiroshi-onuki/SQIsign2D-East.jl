@@ -27,7 +27,8 @@ function random_secret_prime()
 end
 
 function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, odd_images::Vector{Proj1{T}},
-                        I::LeftIdeal, nI::BigInt, q::BigInt, c::Int, global_data::GlobalData) where T <: RingElem
+                        I::LeftIdeal, nI::BigInt, q::BigInt, global_data::GlobalData) where T <: RingElem
+    c = ExponentForTorsion
     r = (BigInt(1) << c) - q
     d = q * r
     a24d, xPd, xQd, xPQd = GeneralizedRandomIsogImages(d, a24, xP, xQ, xPQ, I, nI, global_data)
@@ -70,12 +71,12 @@ function commitment(global_data::GlobalData)
     a24, (xP, xQ, xPQ) = Montgomery_normalize(a24, [xP, xQ, xPQ])
     A = Montgomery_coeff(a24)
     xPc, xQc, xPQc = torsion_basis(a24, SQISIGN_challenge_length)
-    xP = xDBLe(xP, a24, ExponentFull - SQISIGN_challenge_length)
-    xQ = xDBLe(xQ, a24, ExponentFull - SQISIGN_challenge_length)
-    xPQ = xDBLe(xPQ, a24, ExponentFull - SQISIGN_challenge_length)
-    n1, n2, n3, n4 = ec_bi_dlog_commitment(A, xP, xQ, xPQ, xPc, xQc, xPQc, global_data.E0_data)
+    xPd = xDBLe(xP, a24, ExponentFull - SQISIGN_challenge_length)
+    xQd = xDBLe(xQ, a24, ExponentFull - SQISIGN_challenge_length)
+    xPQd = xDBLe(xPQ, a24, ExponentFull - SQISIGN_challenge_length)
+    n1, n2, n3, n4 = ec_bi_dlog_commitment(A, xPc, xQc, xPQc, xPd, xQd, xPQd, global_data.E0_data)
     M = [n1 n3; n2 n4]
-    return A, (I_sec, D_sec, xP, xQ, xPQ), M
+    return A, (I_sec, D_sec, xP, xQ, xPQ, xPc, xQc, xPQc), M
 end
 
 
@@ -99,7 +100,8 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     Isec, Dsec, xPsec, xQsec, xPQsec, odd_images = sk
 
     # compute commitment
-    Acom, (Icom, Dcom, xPcom, xQcom, xPQcom), Mcom = commitment(global_data)
+    Acom, (Icom, Dcom, xPcom, xQcom, xPQcom, xPcom_fix, xQcom_fix, xPQcom_fix), Mcom = commitment(global_data)
+    a24com = A_to_a24(Acom)
 
     # compute challenge and the pull-back of the corresponding ideal
     cha = challenge(Acom, m, global_data)
@@ -107,6 +109,10 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     a, b, c, d = global_data.E0_data.Matrix_2ed_inv * [b, 0, -a, 0]
     alpha = SQIsign2D.Level1.QOrderElem(a, b, c, d)
     Icha = SQIsign2D.Level1.LeftIdeal(alpha, BigInt(1) << SQISIGN_challenge_length)
+    Kcha = ladder3pt(cha, xPcom_fix, xQcom_fix, xPQcom_fix, a24com)
+    a24cha, (xPcha, xQcha, xPQcha) = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, [xPcom, xQcom, xPQcom], StrategyChallenge)
+    a24cha, (xPcha, xQcha, xPQcha) = Montgomery_normalize(a24cha, [xPcha, xQcha, xPQcha])
+    Acha = Montgomery_coeff(a24cha)
 
     # find alpha in bar(Isec)IcomIcha suitable for the response
     Icomcha = SQIsign2D.Level1.intersection(Icom, Icha)
@@ -115,6 +121,16 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     alpha, d, found = element_for_response(I, nI, ExponentForTorsion, [(3, 3)], Dsec)
 
     if found
+
+        # compute the image under the response sigma
+        Malpha = quaternion_to_matrix(involution(alpha), global_data.E0_data.Matrices_2e)
+        xPres, xQres, xPQres = action_of_matrix(Malpha, a24cha, xPcha, xQcha, xPQcha)
+        Dcom_inv = invmod(Dcom, BigInt(1) << ExponentForTorsion)
+        xPres, xQres, xPQres = ladder(Dcom_inv, xPres, a24cha), ladder(Dcom_inv, xQres, a24cha), ladder(Dcom_inv, xPQres, a24cha)
+        xPfix, xQfix, xPQfix = torsion_basis(a24cha, ExponentForTorsion)
+        n1, n2, n3, n4 = ec_bi_dlog_response(Acha, xPfix, xQfix, xPQfix, xPres, xQres, xPQres, global_data.E0_data)
+        Mres = [n1 n3; n2 n4]
+
         q = div(norm(alpha), d*nI)
         n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
         odd_kernels = Proj1{FqFieldElem}[]
@@ -137,7 +153,8 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         end
 
         # compute the auxiliary ellitic curve
-        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, ExponentForTorsion, global_data)
+        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, global_data)
+
         dd = d
         for i in 1:n_odd_l
             l = global_data.E0_data.DegreesOddTorsionBases[i]
@@ -167,15 +184,53 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
             end
             if (e - f) % 2 == 1
                 K = random_point_order_l(a24aux, p + 1, l)
-                @assert is_infinity(ladder(l, K, a24aux))
                 a24aux, tmp = odd_isogeny(a24aux, K, l, vcat([xPaux, xQaux, xPQaux], images))
                 xPaux, xQaux, xPQaux = tmp[1:3]
                 images = tmp[4:end]
             end
         end
 
-        return Acom, Montgomery_coeff(a24aux), xPaux, xQaux, xPQaux, odd_kernels, q, c, d, true
+        Aaux = Montgomery_coeff(a24aux)
+        xPaux, xQaux, xPQaux = action_of_matrix(Mres, a24aux, xPaux, xQaux, xPQaux)
+
+        return (Acom, Aaux, xPaux, xQaux, xPQaux, odd_kernels, q, d), true
     end
-    return nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, false
+    return nothing, false
 end
 
+function verify(pk::FqFieldElem, sign, m::String, global_data::GlobalData)
+    Acom, Aaux, xPaux, xQaux, xPQaux, odd_kernels, q, d = sign
+    a24pub = A_to_a24(pk)
+    a24com = A_to_a24(Acom)
+    a24aux = A_to_a24(Aaux)
+    
+    c = challenge(Acom, m, global_data)
+    xPcom, xQcom, xPQcom = torsion_basis(a24com, SQISIGN_challenge_length)
+    Kcha = ladder3pt(c, xPcom, xQcom, xPQcom, a24com)
+    a24cha, _ = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, Proj1{FqFieldElem}[], StrategyChallenge)
+    a24cha, _ = Montgomery_normalize(a24cha, Proj1{FqFieldElem}[])
+    xPres, xQres, xPQres = torsion_basis(a24cha, ExponentForTorsion)
+
+    # isogeny of dimension 3
+    P1P2 = CouplePoint(xPres, xPaux)
+    Q1Q2 = CouplePoint(xQres, xQaux)
+    PQ1PQ2 = CouplePoint(xPQres, xPQaux)
+    Es, _ = product_isogeny_sqrt(a24cha, a24aux, P1P2, Q1Q2, PQ1PQ2, CouplePoint{FqFieldElem}[], CouplePoint{FqFieldElem}[], ExponentForTorsion, StrategiesDim2[ExponentForTorsion])
+
+    a24mid = a24pub
+    n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
+    for i in 1:n_odd_l
+        l = global_data.E0_data.DegreesOddTorsionBases[i]
+        e = Int(log(l, d))
+        for k in 1:e
+            K = ladder(l^(e - k), odd_kernels[i], a24mid)
+            a24mid, odd_kernels = odd_isogeny(a24mid, K, l, odd_kernels)
+        end
+    end
+
+    j0 = jInvariant_A(a24mid)
+    j1 = jInvariant_A(Es[1])
+    j2 = jInvariant_A(Es[2])
+
+    return j1 == j0 || j2 == j0
+end

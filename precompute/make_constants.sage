@@ -52,7 +52,7 @@ def make_constants(p, e, ed, degs, file_name):
 set_random_seed(0)
 p = 2^253 * 3^3 - 1
 e = 253
-ed = 125
+ed = 126
 degs = 3^3
 make_constants(p, e, ed, degs, "level1torsion.txt")
 

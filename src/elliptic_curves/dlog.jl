@@ -78,6 +78,44 @@ function ec_bi_dlog_challenge(A::T, xP::Proj1{T}, P0::Point{T}, Q0::Point{T}, E0
     return (n1 * n0inv) % BigInt(2)^SQISIGN_challenge_length, (n2 * n0inv) % BigInt(2)^SQISIGN_challenge_length
 end 
 
+# return n1, n2, n3, n4 such that P = [n1]P0 + [n1]Q0, Q = [n3]P0 + [n4]Q0
+# on E_A[2^ExponentForTorsion]
+function ec_bi_dlog_response(A::T, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, 
+    xPb::Proj1{T}, xQb::Proj1{T}, xPQb::Proj1{T}, E0::E0Data) where T <: RingElem
+    P = Point(A, xP)
+    Q = Point(A, xQ)
+    PQ = add(P, -Q, Proj1(A))
+    if !(xPQ == Proj1(PQ.X, PQ.Z))
+    Q = -Q
+    end
+    Pb = Point(A, xPb)
+    Qb = Point(A, xQb)
+    PQb = add(Pb, -Qb, Proj1(A))
+    if !(xPQb == Proj1(PQb.X, PQb.Z))
+    Qb = -Qb
+    end
+
+    base = Weil_pairing_2power(A, Pb, Qb, ExponentForTorsion)
+    w1 = Weil_pairing_2power(A, P, Qb, ExponentForTorsion)
+    w2 = Weil_pairing_2power(A, Pb, P, ExponentForTorsion)
+    w3 = Weil_pairing_2power(A, Q, Qb, ExponentForTorsion)
+    w4 = Weil_pairing_2power(A, Pb, Q, ExponentForTorsion)
+
+    n0 = fq_dlog_power_of_2_opt(base, E0.dlog_data_res)
+    n1 = fq_dlog_power_of_2_opt(w1, E0.dlog_data_res)
+    n2 = fq_dlog_power_of_2_opt(w2, E0.dlog_data_res)
+    n3 = fq_dlog_power_of_2_opt(w3, E0.dlog_data_res)
+    n4 = fq_dlog_power_of_2_opt(w4, E0.dlog_data_res)
+    n0inv = invmod(n0, BigInt(2)^ExponentForTorsion)
+    n1 = (n1 * n0inv) % BigInt(2)^ExponentForTorsion
+    n2 = (n2 * n0inv) % BigInt(2)^ExponentForTorsion
+    n3 = (n3 * n0inv) % BigInt(2)^ExponentForTorsion
+    n4 = (n4 * n0inv) % BigInt(2)^ExponentForTorsion
+
+    return n1, n2, n3, n4
+end
+
+
 # return n s.t. P = [n]Q, where P, Q is a fixed point of order 2^SQISIGN_challenge_length and R is a point s.t. (P, R) is a basis of E_A[2^SQISIGN_challenge_length]
 function ec_dlog(A::T, xP::Proj1{T}, xQ::Proj1{T}, xR::Proj1{T}, E0::E0Data) where T <: RingElem
     P = Point(A, xP)
