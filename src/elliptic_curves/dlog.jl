@@ -265,13 +265,20 @@ function bi_dlog_odd_prime_power(A::T, P::Point{T}, R::Point{T}, S::Point{T}, l:
     return a + c * l^f, b + d * l^f
 end
 
-function bi_dlog_odd_prime_power(A::T, xP::Proj1{T}, xR::Proj1{T}, xS::Proj1{T}, xRS::Proj1{T}, l::Int, e::Int) where T <: RingElem
+function bi_dlog_odd_prime_power(A::T, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, xR::Proj1{T}, xS::Proj1{T}, xRS::Proj1{T}, l::Int, e::Int) where T <: RingElem
     P = Point(A, xP)
+    Q = Point(A, xQ)
+    PQ = add(P, -Q, Proj1(A))
+    if !(xPQ == Proj1(PQ.X, PQ.Z))
+        Q = -Q
+    end
     R = Point(A, xR)
     S = Point(A, xS)
     RS = add(R, -S, Proj1(A))
     if !(xRS == Proj1(RS.X, RS.Z))
         S = -S
     end
-    return bi_dlog_odd_prime_power(A, P, R, S, l, e)
+    a, b = bi_dlog_odd_prime_power(A, P, R, S, l, e)
+    c, d = bi_dlog_odd_prime_power(A, Q, R, S, l, e)
+    return a, b, c, d
 end
