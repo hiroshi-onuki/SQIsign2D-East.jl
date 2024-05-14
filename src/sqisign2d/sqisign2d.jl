@@ -62,6 +62,22 @@ function key_gen(global_data::GlobalData)
         @assert !is_infinity(ladder(9, xR, a24))
     end
 
+    # test bidlog
+    xPodd, xQodd, xPQodd = torsion_basis(a24, 3, 3)
+    for xPim in odd_images
+        A = Montgomery_coeff(a24)
+        a, b = bi_dlog_odd_prime_power(A, xPim, xPodd, xQodd, xPQodd, 3, 3)
+        P = Point(A, xPodd)
+        Q = Point(A, xQodd)
+        PQ = add(P, -Q, Proj1(A))
+        if xPQodd != Proj1(PQ.X, PQ.Z)
+            Q = -Q
+        end
+        Pim = Point(A, xPim)
+        aPbQ = add(mult(a, P, Proj1(A)), mult(b, Q, Proj1(A)), Proj1(A))
+        @assert Pim == aPbQ || Pim == -aPbQ
+    end
+
     return Montgomery_coeff(a24), (I_sec, D_sec, xP, xQ, xPQ, odd_images)
 end
 

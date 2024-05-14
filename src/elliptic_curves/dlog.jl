@@ -234,32 +234,44 @@ function fq_dlog_power_of_2_opt(h::FqFieldElem, dlog_data::DlogData)
     return x
 end
 
-function bi_dlog_odd_prime(A::Proj1{T}, P::Point{T}, R::Point{T}, S::Point{T}, l::Int) where T <: RingElem
+function bi_dlog_odd_prime(A::T, P::Point{T}, R::Point{T}, S::Point{T}, l::Int) where T <: RingElem
     Pd = infinity_full_point(parent(A))
     for a in 0:(l-1)
         Pdd = Pd
         for b in 0:(l-1)
             if P == Pdd
+                @assert P == add(mult(a, R, Proj1(A)), mult(b, S, Proj1(A)), Proj1(A))
                 return a, b
             end
-            Pdd = add(Pd, S, Proj1(A))
+            Pdd = add(Pdd, S, Proj1(A))
         end
         Pd = add(Pd, R, Proj1(A))
     end
-    @assert false, "bi_dlog_odd_prime: no solution"
+    @assert false "bi_dlog_odd_prime: no solution"
 end
 
-function bi_dlog_odd_prime_power(A::Proj1{T}, P::Point{T}, R::Point{T}, S::Point{T}, l::Int, e::Int) where T <: RingElem
+function bi_dlog_odd_prime_power(A::T, P::Point{T}, R::Point{T}, S::Point{T}, l::Int, e::Int) where T <: RingElem
     e == 1 && return bi_dlog_odd_prime(A, P, R, S, l)
     f = div(e, 2)
-    Pd = mult(l^(e - f), P, A)
-    Rd = mult(l^(e - f), R, A)
-    Sd = mult(l^(e - f), S, A)
+    Pd = mult(l^(e - f), P, Proj1(A))
+    Rd = mult(l^(e - f), R, Proj1(A))
+    Sd = mult(l^(e - f), S, Proj1(A))
     a, b = bi_dlog_odd_prime_power(A, Pd, Rd, Sd, l, f)
-    aRbS = add(mult(a, R, A), mult(b, S, A), A)
-    P = add(P, -aRbS, A)
-    R = mult(l^f, R, A)
-    S = mult(l^f, S, A)
+    aRbS = add(mult(a, R, Proj1(A)), mult(b, S, Proj1(A)), Proj1(A))
+    P = add(P, -aRbS, Proj1(A))
+    R = mult(l^f, R, Proj1(A))
+    S = mult(l^f, S, Proj1(A))
     c, d = bi_dlog_odd_prime_power(A, P, R, S, l, e - f)
     return a + c * l^f, b + d * l^f
+end
+
+function bi_dlog_odd_prime_power(A::T, xP::Proj1{T}, xR::Proj1{T}, xS::Proj1{T}, xRS::Proj1{T}, l::Int, e::Int) where T <: RingElem
+    P = Point(A, xP)
+    R = Point(A, xR)
+    S = Point(A, xS)
+    RS = add(R, -S, Proj1(A))
+    if !(xRS == Proj1(RS.X, RS.Z))
+        S = -S
+    end
+    return bi_dlog_odd_prime_power(A, P, R, S, l, e)
 end

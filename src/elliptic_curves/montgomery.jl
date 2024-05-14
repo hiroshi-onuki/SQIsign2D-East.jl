@@ -538,6 +538,30 @@ function complete_baisis(a24::Proj1{T}, P::Proj1{T}, Pd::Proj1{T}, x::T, e::Int)
     return P, Q, PQ
 end
 
+# Algorithm 2 in SQIsign documentation
+# return a fixed basis (P, Q) of E[l^e] from P
+function complete_baisis(a24::Proj1{T}, P::Proj1{T}, Pd::Proj1{T}, x::T, l::Int, e::Int) where T <: RingElem
+    F = parent(a24.X)
+    p = Integer(characteristic(F))
+    N = div((p + 1), l^e)
+    A = a24_to_A(a24)
+    i = gen(F)
+    Q = Proj1(x)
+    while true
+        x += i
+        if is_square(A.Z * x * (A.Z * (x^2 + 1) + A.X * x))
+            Q = Proj1(x)
+            Q = ladder(N, Q, a24)
+            Qd = ladder(l^(e-1), Q, a24)
+            if !is_infinity(Qd) && Qd != Pd
+                break
+            end
+        end
+    end
+    PQ = x_add_sub(P, Q, a24)
+    return P, Q, PQ
+end
+
 # Algorithm 3 in SQIsign documentation
 # return a fixed basis of E[2^e]
 function torsion_basis(a24::Proj1{T}, e::Int) where T <: RingElem
@@ -561,6 +585,31 @@ function torsion_basis(a24::Proj1{T}, e::Int) where T <: RingElem
         end
     end
     return complete_baisis(a24, P, Pd, x, e)
+end
+
+# Algorithm 3 in SQIsign documentation
+# return a fixed basis of E[l^e]
+function torsion_basis(a24::Proj1{T}, l::Int, e::Int) where T <: RingElem
+    F = parent(a24.X)
+    p = Integer(characteristic(F))
+    N = div(p + 1, l^e)
+    A = a24_to_A(a24)
+    i = gen(F)
+    x = F(1)
+    P = Proj1(x)
+    Pd = Proj1(x)
+    while true
+        x += i
+        if is_square(A.Z * x * (A.Z * (x^2 + 1) + A.X * x))
+            P = Proj1(x)
+            P = ladder(N, P, a24)
+            Pd = ladder(l^(e-1), P, a24)
+            if !is_infinity(Pd)
+                break
+            end
+        end
+    end
+    return complete_baisis(a24, P, Pd, x, l, e)
 end
 
 # isomorphism from Montgomery curnve with a24 to Montgomery curve mapping P4 to (1, *)
