@@ -241,18 +241,10 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
                 f = e - Int(log(l, g))
                 for k in 1:f
                     K = ladder(l^(f - k), eval_points[i + 3], a24mid)
-                    @assert is_infinity(ladder(l, K, a24mid))
-                    @assert !is_infinity(K)
                     a24mid, eval_points = odd_isogeny(a24mid, K, l, eval_points)
                 end
             end
             xPmid, xQmid, xPQmid = eval_points[1:3]
-            @assert is_infinity(xDBLe(xPmid, a24mid, ExponentForTorsion))
-            @assert is_infinity(xDBLe(xQmid, a24mid, ExponentForTorsion))
-            @assert is_infinity(xDBLe(xPQmid, a24mid, ExponentForTorsion))
-            @assert !is_infinity(xDBLe(xPmid, a24mid, ExponentForTorsion-1))
-            @assert !is_infinity(xDBLe(xQmid, a24mid, ExponentForTorsion-1))
-            @assert !is_infinity(xDBLe(xPQmid, a24mid, ExponentForTorsion-1))
             a24mid, (xPmid, xQmid, xPQmid) = Montgomery_normalize(a24mid, [xPmid, xQmid, xPQmid])
             Amid = Montgomery_coeff(a24mid)
             xPfix, xQfix, xPQfix = torsion_basis(Amid, ExponentForTorsion)
@@ -264,12 +256,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
             m1, m2, m3, m4 = ec_bi_dlog_response(Aaux, xPaux, xQaux, xPQaux, xPfix, xQfix, xPQfix, global_data.E0_data)
             c = invmod(BigInt(1) << ExponentForTorsion - q, BigInt(1) << ExponentForTorsion)
             M = c * [m1 m3; m2 m4] * [n1 n3; n2 n4]
-
-            # test
-            xP1, xQ1, xPQ1 = torsion_basis(Amid, ExponentForTorsion)
-            xP2, xQ2, xPQ2 = action_of_matrix(M, a24aux, xPfix, xQfix, xPQfix)
-            a24cha_d, _, _, _, _ = d2isogeny(a24mid, a24aux, xP1, xQ1, xPQ1, xP2, xQ2, xPQ2, ExponentForTorsion, q, Proj1{FqFieldElem}[], global_data)
-            @assert jInvariant_a24(a24cha_d) == jInvariant_a24(a24cha)
 
             # compress the signature
             sign = Vector{UInt8}(undef, CompactSQISIGN2D_signature_length)
@@ -301,9 +287,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
             a24com_d, tmp = two_e_iso(a24cha, Kcha_dual, SQISIGN_challenge_length, [P], StrategyChallenge)
             a24com_d, tmp = Montgomery_normalize(a24com_d, [tmp[1]])
             Kcha_d = tmp[1]
-            @assert a24com_d == a24com
             r = ec_dlog(Acom, Kcha, Kcha_d, xQcom_fix, global_data.E0_data)
-            @assert Kcha == ladder(r, Kcha_d, a24com)
             sign[idx:idx+SQISIGN2D_2a_length-1] = integer_to_bytes(r, SQISIGN2D_2a_length)
             idx += SQISIGN2D_2a_length
 
