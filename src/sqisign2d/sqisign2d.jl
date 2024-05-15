@@ -129,10 +129,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         I = involution_product(Isec, Icomcha)
         nI = Dsec * Dcom << SQISIGN_challenge_length
         alpha, d, found = element_for_response(I, nI, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, Dsec)
-        if !found
-            println("not found")
-            continue
-        end
+        !found && continue
 
         # compute the image under the response sigma
         Malpha = quaternion_to_matrix(involution(alpha), global_data.E0_data.Matrices_2e)
@@ -233,13 +230,14 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
             ad = gcd(a, l^e)
             if ad == l^e
                 ea = e
+                b = b % l^e
             else
                 inv = invmod(div(a, ad), l^e)
                 a = (a * inv) % l^e
                 b = (b * inv) % l^e
                 ea = Int(log(l, a))
             end
-            ab_byte = integer_to_bytes(a * l^e + b, 1)
+            ab_byte = integer_to_bytes(ea * l^e + b, 1)
             sign[idx] = ab_byte[1]
             idx += 1
         end
@@ -272,7 +270,8 @@ function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::Gl
         l, e = global_data.E0_data.DegreesOddTorsionBases[i]
         ab = sign[idx]
         idx += 1
-        a = div(ab, l^e) % l^e
+        ea = div(ab, l^e)
+        a = l^ea % l^e
         b = ab % l^e
         odd_kernel_coeffs[i] = (a, b)
     end

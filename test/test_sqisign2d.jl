@@ -11,6 +11,6 @@ function check(param::Module, num::Int)
     end
 end
 
-check(SQIsign2D.Level1, 10)
-check(SQIsign2D.Level3, 10)
-check(SQIsign2D.Level5, 10)
+check(SQIsign2D.Level1, 100)
+check(SQIsign2D.Level3, 100)
+check(SQIsign2D.Level5, 100)
