@@ -551,6 +551,13 @@ function complete_baisis(a24::Proj1{T}, P::Proj1{T}, Pd::Proj1{T}, x::T, e::Int)
     return P, Q, PQ
 end
 
+function is_basis(a24::Proj1{T}, P::Proj1{T}, Q::Proj1{T}, l::Int) where T <: RingElem
+    for i in 1:div(l, 2)
+        P == ladder(i, Q, a24) && return false
+    end
+    return true
+end
+
 # Algorithm 2 in SQIsign documentation
 # return a fixed basis (P, Q) of E[l^e] from P
 function complete_baisis(a24::Proj1{T}, P::Proj1{T}, Pd::Proj1{T}, x::T, l::Int, e::Int) where T <: RingElem
@@ -566,7 +573,7 @@ function complete_baisis(a24::Proj1{T}, P::Proj1{T}, Pd::Proj1{T}, x::T, l::Int,
             Q = Proj1(x)
             Q = ladder(N, Q, a24)
             Qd = ladder(l^(e-1), Q, a24)
-            if !is_infinity(Qd) && Qd != Pd
+            if !is_infinity(Qd) && is_basis(a24, Pd, Qd, l)
                 break
             end
         end

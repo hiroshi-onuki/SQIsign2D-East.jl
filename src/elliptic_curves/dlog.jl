@@ -240,7 +240,6 @@ function bi_dlog_odd_prime(A::T, P::Point{T}, R::Point{T}, S::Point{T}, l::Int) 
         Pdd = Pd
         for b in 0:(l-1)
             if P == Pdd
-                @assert P == add(mult(a, R, Proj1(A)), mult(b, S, Proj1(A)), Proj1(A))
                 return a, b
             end
             Pdd = add(Pdd, S, Proj1(A))

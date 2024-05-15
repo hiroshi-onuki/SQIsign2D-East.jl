@@ -67,8 +67,7 @@ function make_precomputed_values()
     strategy_dlog_res = compute_strategy(div(ExponentForTorsion, window_size) - 1, window_size, 1)
     dlog_data_res = DlogData(ExponentForTorsion, window_size, fq_dlog_table1_res, fq_dlog_table2_res, strategy_dlog_res)
 
-    DegreesOddTorsionBases = [3]
-    ExponentsOddTorsionBases = [3]
+    DegreesOddTorsionBases = [(3, 3)]
     OddTorsionBases = [[P3, Q3]]
 
     Matrices_2e = [M_i_2e, M_ij_2e, M_1k_2e]
@@ -97,5 +96,5 @@ function make_precomputed_values()
         end
     end
 
-    return GlobalData(Fp2, Fp2_i, E0Data(A0, A0d, A0dd, a24_0, jInvariant_A(A0), P2e, Q2e, xP2e, xQ2e, xPQ2e, DegreesOddTorsionBases, ExponentsOddTorsionBases, OddTorsionBases, Matrices_2e, M44inv, Matrices_odd, w, isomorphism_to_A0, dlog_data_full, dlog_data_chall, dlog_data_res, tp_table))
+    return GlobalData(Fp2, Fp2_i, E0Data(A0, A0d, A0dd, a24_0, jInvariant_A(A0), P2e, Q2e, xP2e, xQ2e, xPQ2e, DegreesOddTorsionBases, OddTorsionBases, Matrices_2e, M44inv, Matrices_odd, w, isomorphism_to_A0, dlog_data_full, dlog_data_chall, dlog_data_res, tp_table))
 end

@@ -58,12 +58,20 @@ function key_gen(global_data::GlobalData)
     A = Montgomery_coeff(a24)
 
     nl = length(global_data.E0_data.DegreesOddTorsionBases)
-    Ms = Vector{Matrix{Int}}(undef, nl)   
+    Ms = Vector{Matrix{Int}}(undef, nl)
     for i in 1:nl
-        l = global_data.E0_data.DegreesOddTorsionBases[i]
-        e = global_data.E0_data.ExponentsOddTorsionBases[i]
+        l, e = global_data.E0_data.DegreesOddTorsionBases[i]
         xPodd, xQodd, xPQodd = torsion_basis(a24, l, e)
         xPim, xQim, xPQim = odd_images[3*(i-1)+1:3*i]
+        @assert is_infinity(ladder(l^e, xPim, a24))
+        @assert is_infinity(ladder(l^e, xQim, a24))
+        @assert is_infinity(ladder(l^e, xPQim, a24))
+        @assert is_infinity(ladder(l^e, xPodd, a24))
+        @assert is_infinity(ladder(l^e, xQodd, a24))
+        @assert is_infinity(ladder(l^e, xPQodd, a24))
+        @assert !is_infinity(ladder(l^(e-1), xPodd, a24))
+        @assert !is_infinity(ladder(l^(e-1), xQodd, a24))
+        @assert !is_infinity(ladder(l^(e-1), xPQodd, a24))
         a, b, c, d = bi_dlog_odd_prime_power(A, xPim, xQim, xPQim, xPodd, xQodd, xPQodd, l, e)
         Ms[i] = [a c; b d]
     end
@@ -124,7 +132,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     Icomcha = intersection(Icom, Icha)
     I = involution_product(Isec, Icomcha)
     nI = Dsec * Dcom << SQISIGN_challenge_length
-    alpha, d, found = element_for_response(I, nI, ExponentForTorsion, [(3, 3)], Dsec)
+    alpha, d, found = element_for_response(I, nI, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, Dsec)
 
     if found
 
@@ -142,25 +150,22 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         odd_kernels = Proj1{FqFieldElem}[]
         odd_kernel_coeffs = Tuple{Int, Int}[]
         for i in 1:n_odd_l
-            l = global_data.E0_data.DegreesOddTorsionBases[i]
-            e = global_data.E0_data.ExponentsOddTorsionBases[i]
-            if d % l == 0
-                f = Int(log(l, gcd(d, l^e)))
-                if f > 0
-                    xPodd, xQodd, xPQodd = odd_images[3*(i-1)+1:3*i]
-                    xPodd = ladder(l^(e-f), xPodd, a24pub)
-                    xQodd = ladder(l^(e-f), xQodd, a24pub)
-                    xPQodd = ladder(l^(e-f), xPQodd, a24pub)
-                    a, b = kernel_coefficients(involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
-                    a, b = l^(e-f) * M_odd_images[i] * [a, b]
-                    Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
-                else
-                    a, b = 0, 0
-                    Kodd = infinity_point(global_data.Fp2)
-                end
-                push!(odd_kernels, Kodd)
-                push!(odd_kernel_coeffs, (a, b))
+            l, e = global_data.E0_data.DegreesOddTorsionBases[i]
+            f = Int(log(l, gcd(d, l^e)))
+            if f > 0
+                xPodd, xQodd, xPQodd = odd_images[3*(i-1)+1:3*i]
+                xPodd = ladder(l^(e-f), xPodd, a24pub)
+                xQodd = ladder(l^(e-f), xQodd, a24pub)
+                xPQodd = ladder(l^(e-f), xPQodd, a24pub)
+                a, b = kernel_coefficients(involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
+                a, b = l^(e-f) * M_odd_images[i] * [a, b]
+                Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
+            else
+                a, b = 0, 0
+                Kodd = infinity_point(global_data.Fp2)
             end
+            push!(odd_kernels, Kodd)
+            push!(odd_kernel_coeffs, (a, b))
         end
 
         # compute the auxiliary ellitic curve
@@ -168,12 +173,13 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
 
         dd = d
         for i in 1:n_odd_l
-            l = global_data.E0_data.DegreesOddTorsionBases[i]
+            l, _ = global_data.E0_data.DegreesOddTorsionBases[i]
             e = 0
             while dd % l == 0
                 dd = div(dd, l)
                 e += 1
             end
+            e == 0 && continue
             # determine the order of image[i] 
             K = images[i]
             f = 0
@@ -230,9 +236,10 @@ function verify(pk::FqFieldElem, sign, m::String, global_data::GlobalData)
 
     a24mid = a24pub
     n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
+    odd_isog_kers = Proj1{FqFieldElem}[]
+    odd_isog_degrees = Tuple{Int, Int}[]
     for i in 1:n_odd_l
-        l = global_data.E0_data.DegreesOddTorsionBases[i]
-        e = global_data.E0_data.ExponentsOddTorsionBases[i]
+        l, e = global_data.E0_data.DegreesOddTorsionBases[i]
         a, b = odd_kernel_coeffs[i]
         g = gcd(a, b, l^e)
         d = div(l^e, g)
@@ -250,11 +257,19 @@ function verify(pk::FqFieldElem, sign, m::String, global_data::GlobalData)
                 Kfull = ladder3pt(b, xPodd, xQodd, xPQodd, a24mid)
             end
             e = Int(log(l, d))
-            for k in 1:e
-                K = ladder(l^(e - k), Kfull, a24mid)
-                a24mid, tmp = odd_isogeny(a24mid, K, l, [Kfull])
-                Kfull = tmp[1]
-            end
+            push!(odd_isog_kers, Kfull)
+            push!(odd_isog_degrees, (l, e))
+        end
+    end
+
+    n_isog = length(odd_isog_kers)
+    for i in 1:n_isog
+        Kfull = odd_isog_kers[i]
+        l, e = odd_isog_degrees[i]
+        for k in 1:e
+            K = ladder(l^(e - k), Kfull, a24mid)
+            a24mid, odd_isog_kers = odd_isogeny(a24mid, K, l, odd_isog_kers)
+            Kfull = odd_isog_kers[1]
         end
     end
 

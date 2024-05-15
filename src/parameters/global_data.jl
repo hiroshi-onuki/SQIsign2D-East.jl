@@ -18,8 +18,7 @@ struct E0Data
     xP2e::Proj1{FqFieldElem}
     xQ2e::Proj1{FqFieldElem}
     xPQ2e::Proj1{FqFieldElem}
-    DegreesOddTorsionBases::Vector{Int}
-    ExponentsOddTorsionBases::Vector{Int}
+    DegreesOddTorsionBases::Vector{Tuple{Int, Int}}
     OddTorsionBases::Vector{Vector{Point{FqFieldElem}}}
     Matrices_2e::Vector{Matrix{BigInt}}
     Matrix_2ed_inv::Matrix{BigInt}

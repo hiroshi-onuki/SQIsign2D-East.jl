@@ -125,15 +125,9 @@ function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{
                 alpha = div(alpha, g)
                 newN = div(norm(alpha), nI)
                 if newN % 2 == 1
-                    divisors = []
+                    divisors = [1]
                     for (l, e) in factors
-                        @assert gcd(l, nI) == 1
-                        for ed in 1:e
-                            if newN % l^ed == 0
-                                divisors = vcat(divisors, [d * l for d in divisors])
-                                ed == 1 && push!(divisors, l)
-                            end
-                        end
+                        divisors = [d * l^i for d in divisors for i in 0:e]
                     end
                     for d in divisors
                         if newN % d == 0
