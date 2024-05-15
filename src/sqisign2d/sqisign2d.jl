@@ -210,16 +210,79 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         Aaux = Montgomery_coeff(a24aux)
         xPaux, xQaux, xPQaux = action_of_matrix(Mres, a24aux, xPaux, xQaux, xPQaux)
 
-        return (Acom, Aaux, xPaux, xQaux, xPQaux, odd_kernel_coeffs), true
+        # compress the signature
+        sign = Vector{UInt8}(undef, SQISIGN2D_signature_length)
+        idx = 1
+        Acom_byte = Fq_to_bytes(Acom)
+        sign[idx:idx+SQISIGN2D_Fp2_length-1] = Acom_byte
+        idx += SQISIGN2D_Fp2_length
+        Aaux_byte = Fq_to_bytes(Aaux)
+        sign[idx:idx+SQISIGN2D_Fp2_length-1] = Aaux_byte
+        idx += SQISIGN2D_Fp2_length
+
+        xPfix, xQfix, xPQfix = torsion_basis(a24aux, ExponentForTorsion)
+        n1, n2, n3, n4 = ec_bi_dlog_response(Aaux, xPaux, xQaux, xPQaux, xPfix, xQfix, xPQfix, global_data.E0_data)
+        println("n1 = $n1, n2 = $n2, n3 = $n3, n4 = $n4")
+        for n in [n1, n2, n3, n4]
+            n_byte = integer_to_bytes(n, SQISIGN2D_2a_length)
+            sign[idx:idx+SQISIGN2D_2a_length-1] = n_byte
+            idx += SQISIGN2D_2a_length
+        end
+
+        # coefficient (a:b) is of the form (l^f:b), where 0 < f <= e
+        for i in 1:n_odd_l
+            l, e = global_data.E0_data.DegreesOddTorsionBases[i]
+            a, b = odd_kernel_coeffs[i]
+            println("a = $a, b = $b")
+            ad = gcd(a, l^e)
+            if ad == l^e
+                ea = e
+            else
+                inv = invmod(div(a, ad), l^e)
+                a = (a * inv) % l^e
+                b = (b * inv) % l^e
+                ea = Int(log(l, a))
+            end
+            ab_byte = integer_to_bytes(a * l^e + b, 1)
+            sign[idx] = ab_byte[1]
+            idx += 1
+        end
+
+        return (sign, odd_kernel_coeffs), true
     end
     return nothing, false
 end
 
-function verify(pk::FqFieldElem, sign, m::String, global_data::GlobalData)
-    Acom, Aaux, xPaux, xQaux, xPQaux, odd_kernel_coeffs = sign
-    a24pub = A_to_a24(pk)
+function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::GlobalData)
+    # decompress the signature
+    idx = 1
+    Acom = bytes_to_Fq(sign[idx:idx+SQISIGN2D_Fp2_length-1], global_data.Fp2)
     a24com = A_to_a24(Acom)
+    idx += SQISIGN2D_Fp2_length
+    Aaux = bytes_to_Fq(sign[idx:idx+SQISIGN2D_Fp2_length-1], global_data.Fp2)
     a24aux = A_to_a24(Aaux)
+    idx += SQISIGN2D_Fp2_length
+    n = Vector{BigInt}(undef, 4)
+    for i in 1:4
+        n[i] = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
+        idx += SQISIGN2D_2a_length
+    end
+    xPfix, xQfix, xPQfix = torsion_basis(a24aux, ExponentForTorsion)
+    xPaux = linear_comb_2_e(n[1], n[2], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xQaux = linear_comb_2_e(n[3], n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xPQaux = linear_comb_2_e(n[1]- n[3], n[2] - n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
+    odd_kernel_coeffs = Vector{Tuple{Int, Int}}(undef, n_odd_l)
+    for i in 1:n_odd_l
+        l, e = global_data.E0_data.DegreesOddTorsionBases[i]
+        ab = sign[idx]
+        idx += 1
+        a = div(ab, l^e) % l^e
+        b = ab % l^e
+        odd_kernel_coeffs[i] = (a, b)
+        println("a = $a, b = $b")
+    end
+    a24pub = A_to_a24(pk)
     
     c = challenge(Acom, m, global_data)
     xPcom, xQcom, xPQcom = torsion_basis(a24com, SQISIGN_challenge_length)

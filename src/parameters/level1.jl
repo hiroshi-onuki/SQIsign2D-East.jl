@@ -12,6 +12,7 @@ include("../elliptic_curves/dlog.jl")
 include("../rii/quat_action.jl")
 include("../rii/d2isogeny.jl")
 include("../rii/rii.jl")
+include("../utilities/for_compression.jl")
 include("../sqisign2d/sqisign2d.jl")
 
 StrategyChallenge = compute_strategy(div(SQISIGN_challenge_length, 2) - 1, 1, 1)

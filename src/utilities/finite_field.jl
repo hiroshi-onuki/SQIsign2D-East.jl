@@ -1,4 +1,4 @@
-export Frob, mult_by_i, square_root
+export Frob, mult_by_i, square_root, Fq_to_bytes, bytes_to_Fq
 
 # p-th power Frobenius map
 function Frob(x::FinFieldElem)
