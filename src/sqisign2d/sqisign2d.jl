@@ -63,15 +63,6 @@ function key_gen(global_data::GlobalData)
         l, e = global_data.E0_data.DegreesOddTorsionBases[i]
         xPodd, xQodd, xPQodd = torsion_basis(A, l, e)
         xPim, xQim, xPQim = odd_images[3*(i-1)+1:3*i]
-        @assert is_infinity(ladder(l^e, xPim, a24))
-        @assert is_infinity(ladder(l^e, xQim, a24))
-        @assert is_infinity(ladder(l^e, xPQim, a24))
-        @assert is_infinity(ladder(l^e, xPodd, a24))
-        @assert is_infinity(ladder(l^e, xQodd, a24))
-        @assert is_infinity(ladder(l^e, xPQodd, a24))
-        @assert !is_infinity(ladder(l^(e-1), xPodd, a24))
-        @assert !is_infinity(ladder(l^(e-1), xQodd, a24))
-        @assert !is_infinity(ladder(l^(e-1), xPQodd, a24))
         a, b, c, d = bi_dlog_odd_prime_power(A, xPim, xQim, xPQim, xPodd, xQodd, xPQodd, l, e)
         Ms[i] = [a c; b d]
     end
@@ -117,28 +108,31 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     a24pub = A_to_a24(A)
     Isec, Dsec, xPsec, xQsec, xPQsec, odd_images, M_odd_images = sk
 
-    # compute commitment
-    Acom, (Icom, Dcom, xPcom, xQcom, xPQcom, xPcom_fix, xQcom_fix, xPQcom_fix), Mcom = commitment(global_data)
-    a24com = A_to_a24(Acom)
+    while true
+        # compute commitment
+        Acom, (Icom, Dcom, xPcom, xQcom, xPQcom, xPcom_fix, xQcom_fix, xPQcom_fix), Mcom = commitment(global_data)
+        a24com = A_to_a24(Acom)
 
-    # compute challenge and the pull-back of the corresponding ideal
-    cha = challenge(Acom, m, global_data)
-    a, b = Mcom * [1, cha]
-    a, b, c, d = global_data.E0_data.Matrix_2ed_inv * [b, 0, -a, 0]
-    alpha = QOrderElem(a, b, c, d)
-    Icha = LeftIdeal(alpha, BigInt(1) << SQISIGN_challenge_length)
-    Kcha = ladder3pt(cha, xPcom_fix, xQcom_fix, xPQcom_fix, a24com)
-    a24cha, (xPcha, xQcha, xPQcha) = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, [xPcom, xQcom, xPQcom], StrategyChallenge)
-    a24cha, (xPcha, xQcha, xPQcha) = Montgomery_normalize(a24cha, [xPcha, xQcha, xPQcha])
-    Acha = Montgomery_coeff(a24cha)
+        # compute challenge and the pull-back of the corresponding ideal
+        cha = challenge(Acom, m, global_data)
+        a, b = Mcom * [1, cha]
+        a, b, c, d = global_data.E0_data.Matrix_2ed_inv * [b, 0, -a, 0]
+        alpha = QOrderElem(a, b, c, d)
+        Icha = LeftIdeal(alpha, BigInt(1) << SQISIGN_challenge_length)
+        Kcha = ladder3pt(cha, xPcom_fix, xQcom_fix, xPQcom_fix, a24com)
+        a24cha, (xPcha, xQcha, xPQcha) = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, [xPcom, xQcom, xPQcom], StrategyChallenge)
+        a24cha, (xPcha, xQcha, xPQcha) = Montgomery_normalize(a24cha, [xPcha, xQcha, xPQcha])
+        Acha = Montgomery_coeff(a24cha)
 
-    # find alpha in bar(Isec)IcomIcha suitable for the response
-    Icomcha = intersection(Icom, Icha)
-    I = involution_product(Isec, Icomcha)
-    nI = Dsec * Dcom << SQISIGN_challenge_length
-    alpha, d, found = element_for_response(I, nI, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, Dsec)
-
-    if found
+        # find alpha in bar(Isec)IcomIcha suitable for the response
+        Icomcha = intersection(Icom, Icha)
+        I = involution_product(Isec, Icomcha)
+        nI = Dsec * Dcom << SQISIGN_challenge_length
+        alpha, d, found = element_for_response(I, nI, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, Dsec)
+        if !found
+            println("not found")
+            continue
+        end
 
         # compute the image under the response sigma
         Malpha = quaternion_to_matrix(involution(alpha), global_data.E0_data.Matrices_2e)
@@ -250,9 +244,8 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
             idx += 1
         end
 
-        return sign, true
+        return sign
     end
-    return nothing, false
 end
 
 function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::GlobalData)
