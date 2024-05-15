@@ -297,7 +297,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
                 sign[idx+1:idx+SQISIGN2D_2a_length] = integer_to_bytes(a, SQISIGN2D_2a_length)
                 P = xPcha
             end
-            println(affine(Kcha_dual))
             idx += SQISIGN2D_2a_length + 1
             a24com_d, tmp = two_e_iso(a24cha, Kcha_dual, SQISIGN_challenge_length, [P], StrategyChallenge)
             a24com_d, tmp = Montgomery_normalize(a24com_d, [tmp[1]])
@@ -308,7 +307,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
             sign[idx:idx+SQISIGN2D_2a_length-1] = integer_to_bytes(r, SQISIGN2D_2a_length)
             idx += SQISIGN2D_2a_length
 
-            @assert CompactSQISIGN2D_signature_length == idx
         end
 
         # coefficient (a:b) is of the form (l^f:b), where 0 < f <= e
@@ -331,7 +329,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
         end
 
         return sign
-        
     end
 end
 

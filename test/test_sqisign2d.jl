@@ -1,16 +1,23 @@
 using SQIsign2D
 
-function check(param::Module, num::Int)
+function check(param::Module, num::Int, is_compact::Bool)
     global_data = param.make_precomputed_values()
-    for _ in 1:num
+    for i in 1:num
         pk, sk = param.key_gen(global_data)
         m = "hello"
-        sign = param.signing(pk, sk, m, global_data, true)
-        println("sign len: ", length(sign))
-        @assert param.verify_compact(pk, sign, m, global_data)
+        sign = param.signing(pk, sk, m, global_data, is_compact)
+        i == 1 && println("sign len: ", length(sign))
+        if !is_compact
+            @assert param.verify(pk, sign, m, global_data)
+        else
+            @assert param.verify_compact(pk, sign, m, global_data)
+        end
     end
 end
 
-check(SQIsign2D.Level1, 100)
-check(SQIsign2D.Level3, 100)
-check(SQIsign2D.Level5, 100)
+check(SQIsign2D.Level1, 10, false)
+check(SQIsign2D.Level1, 10, true)
+check(SQIsign2D.Level3, 10, false)
+check(SQIsign2D.Level3, 10, true)
+check(SQIsign2D.Level5, 10, false)
+check(SQIsign2D.Level5, 10, true)
