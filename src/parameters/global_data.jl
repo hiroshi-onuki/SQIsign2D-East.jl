@@ -25,7 +25,6 @@ struct E0Data
     Matrices_odd::Vector{Vector{Matrix{Int}}}
     Weil_P2eQ2e::FqFieldElem
     isomorphism_to_A0::Function
-    dlog_data_full::DlogData
     dlog_data_chall::DlogData
     dlog_data_res::DlogData
     tate_table::Vector{Vector{FqFieldElem}}

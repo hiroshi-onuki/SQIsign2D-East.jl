@@ -59,16 +59,16 @@ function make_precomputed_values()
 
     # precomputed values for discrete logarithm
     tp_table = make_pairing_table(A0, P2e, ExponentFull)
-    tp_P2e_Q2e = Tate_pairing_P0(Q2e, tp_table, Cofactor)
     window_size = 3
-    fq_dlog_table1, fq_dlog_table2 = make_dlog_table(tp_P2e_Q2e, ExponentFull, window_size)
-    strategy_dlog = compute_strategy(div(ExponentFull, window_size) - 1, window_size, 1)
-    dlog_data_full = DlogData(ExponentFull, window_size, fq_dlog_table1, fq_dlog_table2, strategy_dlog)
-    base = tp_P2e_Q2e^(BigInt(2)^(ExponentFull - SQISIGN_challenge_length))
+    gen = 1
+    while gen^(BigInt(2)^(ExponentFull - 1)) == 1
+        gen = rand(Fp2)^((p^2 - 1) >> ExponentFull)
+    end
+    base = gen^(BigInt(2)^(ExponentFull - SQISIGN_challenge_length))
     fq_dlog_table1_c, fq_dlog_table2_c = make_dlog_table(base, SQISIGN_challenge_length, window_size)
     strategy_dlog_c = compute_strategy(div(SQISIGN_challenge_length, window_size) - 1, window_size, 1)
     dlog_data_chall = DlogData(SQISIGN_challenge_length, window_size, fq_dlog_table1_c, fq_dlog_table2_c, strategy_dlog_c)
-    base = tp_P2e_Q2e^(BigInt(2)^(ExponentFull - ExponentForTorsion))
+    base = gen^(BigInt(2)^(ExponentFull - ExponentForTorsion))
     fq_dlog_table1_res, fq_dlog_table2_res = make_dlog_table(base, ExponentForTorsion, window_size)
     strategy_dlog_res = compute_strategy(div(ExponentForTorsion, window_size) - 1, window_size, 1)
     dlog_data_res = DlogData(ExponentForTorsion, window_size, fq_dlog_table1_res, fq_dlog_table2_res, strategy_dlog_res)
@@ -102,5 +102,5 @@ function make_precomputed_values()
         end
     end
 
-    return GlobalData(Fp2, Fp2_i, E0Data(A0, A0d, A0dd, a24_0, jInvariant_A(A0), P2e, Q2e, xP2e, xQ2e, xPQ2e, DegreesOddTorsionBases, OddTorsionBases, Matrices_2e, M44inv, Matrices_odd, w, isomorphism_to_A0, dlog_data_full, dlog_data_chall, dlog_data_res, tp_table))
+    return GlobalData(Fp2, Fp2_i, E0Data(A0, A0d, A0dd, a24_0, jInvariant_A(A0), P2e, Q2e, xP2e, xQ2e, xPQ2e, DegreesOddTorsionBases, OddTorsionBases, Matrices_2e, M44inv, Matrices_odd, w, isomorphism_to_A0, dlog_data_chall, dlog_data_res, tp_table))
 end
