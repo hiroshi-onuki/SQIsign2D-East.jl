@@ -222,7 +222,9 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
 
         xPfix, xQfix, xPQfix = torsion_basis(a24aux, ExponentForTorsion)
         n1, n2, n3, n4 = ec_bi_dlog_response(Aaux, xPaux, xQaux, xPQaux, xPfix, xQfix, xPQfix, global_data.E0_data)
-        println("n1 = $n1, n2 = $n2, n3 = $n3, n4 = $n4")
+        @assert xPaux == linear_comb_2_e(n1, n2, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+        @assert xQaux == linear_comb_2_e(n3, n4, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+        @assert xPQaux == linear_comb_2_e(n1 - n3, n2 - n4, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
         for n in [n1, n2, n3, n4]
             n_byte = integer_to_bytes(n, SQISIGN2D_2a_length)
             sign[idx:idx+SQISIGN2D_2a_length-1] = n_byte
@@ -233,7 +235,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         for i in 1:n_odd_l
             l, e = global_data.E0_data.DegreesOddTorsionBases[i]
             a, b = odd_kernel_coeffs[i]
-            println("a = $a, b = $b")
             ad = gcd(a, l^e)
             if ad == l^e
                 ea = e
@@ -248,7 +249,30 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
             idx += 1
         end
 
-        return (sign, odd_kernel_coeffs), true
+        # decompress the signature
+        idx = 1
+        Acom_d = bytes_to_Fq(sign[idx:idx+SQISIGN2D_Fp2_length-1], global_data.Fp2)
+        idx += SQISIGN2D_Fp2_length
+        Aaux_d = bytes_to_Fq(sign[idx:idx+SQISIGN2D_Fp2_length-1], global_data.Fp2)
+        idx += SQISIGN2D_Fp2_length
+        n = Vector{BigInt}(undef, 4)
+        for i in 1:4
+            n[i] = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
+            idx += SQISIGN2D_2a_length
+        end
+        xPfix, xQfix, xPQfix = torsion_basis(a24aux, ExponentForTorsion)
+        xPaux_d = linear_comb_2_e(n[1], n[2], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+        xQaux_d = linear_comb_2_e(n[3], n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+        xPQaux_d = linear_comb_2_e(n[1]- n[3], n[2] - n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+
+        @assert Acom_d == Acom
+        @assert Aaux_d == Aaux
+        @assert xPaux_d == xPaux
+        @assert xQaux_d == xQaux
+        @assert xPQaux_d == xPQaux
+        # end
+
+        return sign, true
     end
     return nothing, false
 end
@@ -280,7 +304,6 @@ function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::Gl
         a = div(ab, l^e) % l^e
         b = ab % l^e
         odd_kernel_coeffs[i] = (a, b)
-        println("a = $a, b = $b")
     end
     a24pub = A_to_a24(pk)
     
