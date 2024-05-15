@@ -1,2 +1,1 @@
-#include("test_rii.jl")
-include("test_grii.jl")
+include("test_sqisign2d.jl")

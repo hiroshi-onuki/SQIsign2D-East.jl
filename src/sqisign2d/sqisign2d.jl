@@ -113,16 +113,16 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
     cha = challenge(Acom, m, global_data)
     a, b = Mcom * [1, cha]
     a, b, c, d = global_data.E0_data.Matrix_2ed_inv * [b, 0, -a, 0]
-    alpha = SQIsign2D.Level1.QOrderElem(a, b, c, d)
-    Icha = SQIsign2D.Level1.LeftIdeal(alpha, BigInt(1) << SQISIGN_challenge_length)
+    alpha = QOrderElem(a, b, c, d)
+    Icha = LeftIdeal(alpha, BigInt(1) << SQISIGN_challenge_length)
     Kcha = ladder3pt(cha, xPcom_fix, xQcom_fix, xPQcom_fix, a24com)
     a24cha, (xPcha, xQcha, xPQcha) = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, [xPcom, xQcom, xPQcom], StrategyChallenge)
     a24cha, (xPcha, xQcha, xPQcha) = Montgomery_normalize(a24cha, [xPcha, xQcha, xPQcha])
     Acha = Montgomery_coeff(a24cha)
 
     # find alpha in bar(Isec)IcomIcha suitable for the response
-    Icomcha = SQIsign2D.Level1.intersection(Icom, Icha)
-    I = SQIsign2D.Level1.involution_product(Isec, Icomcha)
+    Icomcha = intersection(Icom, Icha)
+    I = involution_product(Isec, Icomcha)
     nI = Dsec * Dcom << SQISIGN_challenge_length
     alpha, d, found = element_for_response(I, nI, ExponentForTorsion, [(3, 3)], Dsec)
 
@@ -236,7 +236,6 @@ function verify(pk::FqFieldElem, sign, m::String, global_data::GlobalData)
         a, b = odd_kernel_coeffs[i]
         g = gcd(a, b, l^e)
         d = div(l^e, g)
-        println(g)
         if d > 0
             xPodd, xQodd, xPQodd = torsion_basis(a24mid, l, e)
             xPodd = ladder(g, xPodd, a24mid)

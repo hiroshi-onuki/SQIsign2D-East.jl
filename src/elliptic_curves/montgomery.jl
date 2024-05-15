@@ -454,6 +454,19 @@ function two_e_iso(a24::Proj1{T}, P::Proj1{T}, e::Int, Qs::Vector{Proj1{T}}, str
         K = xDBLe(P, a24, e-1)
         a24_neighbor = two_iso(a24, K)
     end
+    if e % 2 == 1
+        K = xDBLe(P, a24, e-1)
+        if K.X == 0
+            a24, tmp = two_iso_zero(a24, vcat([P], Qs))
+        else
+            a24 = two_iso_curve(K)
+            tmp = vcat([two_iso_eval(K, P)], [two_iso_eval(K, Q) for Q in Qs])
+        end
+        P = tmp[1]
+        Qs = tmp[2:end]
+        e -= 1
+    end
+
     S = [div(e, 2)]
     Ps = vcat(Qs, [P])
     i = 1
