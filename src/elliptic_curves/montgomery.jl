@@ -584,18 +584,18 @@ end
 
 # Algorithm 3 in SQIsign documentation
 # return a fixed basis of E[2^e]
-function torsion_basis(a24::Proj1{T}, e::Int) where T <: RingElem
-    F = parent(a24.X)
+function torsion_basis(A::T, e::Int) where T <: RingElem
+    F = parent(A)
     p = Integer(characteristic(F))
     N = (p + 1) >> e
-    A = a24_to_A(a24)
+    a24 = A_to_a24(A)
     i = gen(F)
     x = F(1)
     P = Proj1(x)
     Pd = Proj1(x)
     while true
         x += i
-        if is_square(A.Z * x * (A.Z * (x^2 + 1) + A.X * x))
+        if is_square(x * ((x^2 + 1) + A * x))
             P = Proj1(x)
             P = ladder(N, P, a24)
             Pd = xDBLe(P, a24, e-1)
@@ -609,18 +609,18 @@ end
 
 # Algorithm 3 in SQIsign documentation
 # return a fixed basis of E[l^e]
-function torsion_basis(a24::Proj1{T}, l::Int, e::Int) where T <: RingElem
-    F = parent(a24.X)
+function torsion_basis(A::T, l::Int, e::Int) where T <: RingElem
+    F = parent(A)
     p = Integer(characteristic(F))
     N = div(p + 1, l^e)
-    A = a24_to_A(a24)
+    a24 = A_to_a24(A)
     i = gen(F)
     x = F(1)
     P = Proj1(x)
     Pd = Proj1(x)
     while true
         x += i
-        if is_square(A.Z * x * (A.Z * (x^2 + 1) + A.X * x))
+        if is_square(x * ((x^2 + 1) + A * x))
             P = Proj1(x)
             P = ladder(N, P, a24)
             Pd = ladder(l^(e-1), P, a24)
