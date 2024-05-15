@@ -95,7 +95,11 @@ end
 
 
 function challenge(A::FqFieldElem, m::String, global_data::GlobalData)
-    h = sha3_256(string(A) * m)
+    if SQISIGN_challenge_length <= 256
+        h = sha3_256(string(A) * m)
+    else
+        h = sha3_512(string(A) * m)
+    end
 
     c = BigInt(0)
     len = SQISIGN_challenge_length

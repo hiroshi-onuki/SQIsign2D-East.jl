@@ -160,11 +160,6 @@ function d2isogeny_form_Esquare(a24::Proj1{T}, d::BigInt, alpha::QOrderElem, xP0
     A = Es[idx]
     odd_images = [image[idx] for image in images[4:end]]
 
-    # check the pairing
-    w1 = Weil_pairing_2power(affine(A), xP, xQ, xPQ, ExponentFull)
-    @assert w1 == w0^d
-    # end
-
     return A_to_a24(A), xP, xQ, xPQ, odd_images
 end
 
@@ -214,11 +209,6 @@ function d2isogeny(a24_1::Proj1{T}, a24_2::Proj1{T}, xP1::Proj1{T}, xQ1::Proj1{T
     xP, xQ, xPQ = images[1][idx], images[2][idx], images[3][idx]
     A = Es[idx]
     images = [image[idx] for image in images[4:end]]
-
-    # check the pairing
-    w1 = Weil_pairing_2power(affine(A), xP, xQ, xPQ, exp)
-    @assert w1 == w0^d
-    # end
 
     return A_to_a24(A), xP, xQ, xPQ, images
     

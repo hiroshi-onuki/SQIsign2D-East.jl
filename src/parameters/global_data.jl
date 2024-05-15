@@ -27,7 +27,6 @@ struct E0Data
     isomorphism_to_A0::Function
     dlog_data_chall::DlogData
     dlog_data_res::DlogData
-    tate_table::Vector{Vector{FqFieldElem}}
 end
 
 struct GlobalData

@@ -58,7 +58,6 @@ function make_precomputed_values()
     xPQ2e = Proj1(PQ2e.X, PQ2e.Z)
 
     # precomputed values for discrete logarithm
-    tp_table = make_pairing_table(A0, P2e, ExponentFull)
     window_size = 3
     gen = 1
     while gen^(BigInt(2)^(ExponentFull - 1)) == 1
@@ -102,5 +101,5 @@ function make_precomputed_values()
         end
     end
 
-    return GlobalData(Fp2, Fp2_i, E0Data(A0, A0d, A0dd, a24_0, jInvariant_A(A0), P2e, Q2e, xP2e, xQ2e, xPQ2e, DegreesOddTorsionBases, OddTorsionBases, Matrices_2e, M44inv, Matrices_odd, w, isomorphism_to_A0, dlog_data_chall, dlog_data_res, tp_table))
+    return GlobalData(Fp2, Fp2_i, E0Data(A0, A0d, A0dd, a24_0, jInvariant_A(A0), P2e, Q2e, xP2e, xQ2e, xPQ2e, DegreesOddTorsionBases, OddTorsionBases, Matrices_2e, M44inv, Matrices_odd, w, isomorphism_to_A0, dlog_data_chall, dlog_data_res))
 end
