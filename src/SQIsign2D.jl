@@ -31,4 +31,9 @@ using Nemo, SQIsign2D
 include("parameters/level3.jl")
 end # module Level3
 
+module Level5
+using Nemo, SQIsign2D
+include("parameters/level5.jl")
+end # module Level5
+
 end # module SQIsign2D
