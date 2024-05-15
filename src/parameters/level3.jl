@@ -1,5 +1,5 @@
 include("level3/prime.jl")
-include("level3/klpt_constants.jl")
+include("level3/constants.jl")
 
 include("../quaternion/order.jl")
 include("../quaternion/cornacchia.jl")
