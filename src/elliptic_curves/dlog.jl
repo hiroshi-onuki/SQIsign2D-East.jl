@@ -64,8 +64,14 @@ function ec_bi_dlog_commitment(A::T, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T},
 end
 
 # return n1, n2 such that P = [n1]P0 + [n2]Q0
-function ec_bi_dlog_challenge(A::T, xP::Proj1{T}, P0::Point{T}, Q0::Point{T}, E0::E0Data) where T <: RingElem
+function ec_bi_dlog_challenge(A::T, xP::Proj1{T}, xP0::Proj1{T}, xQ0::Proj1{T}, xPQ0::Proj1{T}, E0::E0Data) where T <: RingElem
     P = Point(A, xP)
+    P0 = Point(A, xP0)
+    Q0 = Point(A, xQ0)
+    PQ0 = add(P0, -Q0, Proj1(A))
+    if !(xPQ0 == Proj1(PQ0.X, PQ0.Z))
+        Q0 = -Q0
+    end
     base = Weil_pairing_2power(A, P0, Q0, SQISIGN_challenge_length)
     w1 = Weil_pairing_2power(A, P, Q0, SQISIGN_challenge_length)
     w2 = Weil_pairing_2power(A, P0, P, SQISIGN_challenge_length)

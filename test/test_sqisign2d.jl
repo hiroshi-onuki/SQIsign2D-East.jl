@@ -7,7 +7,7 @@ function check(param::Module, num::Int)
         m = "hello"
         sign = param.signing(pk, sk, m, global_data, true)
         println("sign len: ", length(sign))
-        @assert param.verify(pk, sign, m, global_data)
+        @assert param.verify_compact(pk, sign, m, global_data)
     end
 end
 

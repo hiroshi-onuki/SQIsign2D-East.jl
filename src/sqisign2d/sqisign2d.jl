@@ -120,8 +120,13 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
         alpha = QOrderElem(a, b, c, d)
         Icha = LeftIdeal(alpha, BigInt(1) << SQISIGN_challenge_length)
         Kcha = ladder3pt(cha, xPcom_fix, xQcom_fix, xPQcom_fix, a24com)
-        a24cha, (xPcha, xQcha, xPQcha) = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, [xPcom, xQcom, xPQcom], StrategyChallenge)
-        a24cha, (xPcha, xQcha, xPQcha) = Montgomery_normalize(a24cha, [xPcha, xQcha, xPQcha])
+        if !is_compact
+            a24cha, (xPcha, xQcha, xPQcha) = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, [xPcom, xQcom, xPQcom], StrategyChallenge)
+            a24cha, (xPcha, xQcha, xPQcha) = Montgomery_normalize(a24cha, [xPcha, xQcha, xPQcha])
+        else
+            a24cha, (xPcha, xQcha, xPQcha, Kcha_dual) = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, [xPcom, xQcom, xPQcom, xQcom_fix], StrategyChallenge)
+            a24cha, (xPcha, xQcha, xPQcha, Kcha_dual) = Montgomery_normalize(a24cha, [xPcha, xQcha, xPQcha, Kcha_dual])
+        end
         Acha = Montgomery_coeff(a24cha)
 
         # find alpha in bar(Isec)IcomIcha suitable for the response
@@ -234,7 +239,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
                 a, b = odd_kernel_coeffs[i]
                 g = gcd(a, b, l^e)
                 f = e - Int(log(l, g))
-                println("a = $a, b = $b, g = $g, f = $f")
                 for k in 1:f
                     K = ladder(l^(f - k), eval_points[i + 3], a24mid)
                     @assert is_infinity(ladder(l, K, a24mid))
@@ -268,9 +272,43 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
             @assert jInvariant_a24(a24cha_d) == jInvariant_a24(a24cha)
 
             # compress the signature
-            sign = Vector{UInt8}(undef, SQISIGN2D_signature_length)
+            sign = Vector{UInt8}(undef, CompactSQISIGN2D_signature_length)
             idx = 1
-            @assert false
+            Aaux_byte = Fq_to_bytes(Aaux)
+            sign[idx:idx+SQISIGN2D_Fp2_length-1] = Aaux_byte
+            idx += SQISIGN2D_Fp2_length
+
+            for n in [M[1, 1], M[2, 1], M[1, 2], M[2, 2]]
+                n_byte = integer_to_bytes(n, SQISIGN2D_2a_length)
+                sign[idx:idx+SQISIGN2D_2a_length-1] = n_byte
+                idx += SQISIGN2D_2a_length
+            end
+
+            xPcha, xQcha, xPQcha = torsion_basis(Acha, SQISIGN_challenge_length)
+            a, b = ec_bi_dlog_challenge(Acha, Kcha_dual, xPcha, xQcha, xPQcha, global_data.E0_data)
+            if a % 2 == 1
+                b = (b * invmod(a, BigInt(1) << SQISIGN_challenge_length)) % (BigInt(1) << SQISIGN_challenge_length)
+                sign[idx] = 1
+                sign[idx+1:idx+SQISIGN2D_2a_length] = integer_to_bytes(b, SQISIGN2D_2a_length)
+                P = xQcha
+            else
+                a = (a * invmod(b, BigInt(1) << SQISIGN_challenge_length)) % (BigInt(1) << SQISIGN_challenge_length)
+                sign[idx] = 0
+                sign[idx+1:idx+SQISIGN2D_2a_length] = integer_to_bytes(a, SQISIGN2D_2a_length)
+                P = xPcha
+            end
+            println(affine(Kcha_dual))
+            idx += SQISIGN2D_2a_length + 1
+            a24com_d, tmp = two_e_iso(a24cha, Kcha_dual, SQISIGN_challenge_length, [P], StrategyChallenge)
+            a24com_d, tmp = Montgomery_normalize(a24com_d, [tmp[1]])
+            Kcha_d = tmp[1]
+            @assert a24com_d == a24com
+            r = ec_dlog(Acom, Kcha, Kcha_d, xQcom_fix, global_data.E0_data)
+            @assert Kcha == ladder(r, Kcha_d, a24com)
+            sign[idx:idx+SQISIGN2D_2a_length-1] = integer_to_bytes(r, SQISIGN2D_2a_length)
+            idx += SQISIGN2D_2a_length
+
+            @assert CompactSQISIGN2D_signature_length == idx
         end
 
         # coefficient (a:b) is of the form (l^f:b), where 0 < f <= e
@@ -331,7 +369,7 @@ function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::Gl
     a24aux = A_to_a24(Aaux)
     a24pub = A_to_a24(pk)
 
-    c = challenge(Acom, m, global_data)
+    c = challenge(Acom, m)
     xPcom, xQcom, xPQcom = torsion_basis(Acom, SQISIGN_challenge_length)
     Kcha = ladder3pt(c, xPcom, xQcom, xPQcom, a24com)
     a24cha, _ = two_e_iso(a24com, Kcha, SQISIGN_challenge_length, Proj1{FqFieldElem}[], StrategyChallenge)
@@ -339,7 +377,7 @@ function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::Gl
     Acha = Montgomery_coeff(a24cha)
     xPres, xQres, xPQres = torsion_basis(Acha, ExponentForTorsion)
 
-    # isogeny of dimension 3
+    # isogeny of dimension 2
     P1P2 = CouplePoint(xPres, xPaux)
     Q1Q2 = CouplePoint(xQres, xQaux)
     PQ1PQ2 = CouplePoint(xPQres, xPQaux)
@@ -389,4 +427,115 @@ function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::Gl
     j2 = jInvariant_A(Es[2])
 
     return j1 == j0 || j2 == j0
+end
+
+function verify_compact(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::GlobalData)
+    # decompress the signature
+    idx = 1
+    Aaux = bytes_to_Fq(sign[idx:idx+SQISIGN2D_Fp2_length-1], global_data.Fp2)
+    idx += SQISIGN2D_Fp2_length
+    n = Vector{BigInt}(undef, 4)
+    for i in 1:4
+        n[i] = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
+        idx += SQISIGN2D_2a_length
+    end
+    xPfix, xQfix, xPQfix = torsion_basis(Aaux, ExponentForTorsion)
+    a24aux = A_to_a24(Aaux)
+    xPaux = linear_comb_2_e(n[1], n[2], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xQaux = linear_comb_2_e(n[3], n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xPQaux = linear_comb_2_e(n[1]- n[3], n[2] - n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+
+    bit_s = sign[idx]
+    idx += 1
+    s = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
+    idx += SQISIGN2D_2a_length
+    r = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
+    idx += SQISIGN2D_2a_length
+
+    n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
+    odd_kernel_coeffs = Vector{Tuple{Int, Int}}(undef, n_odd_l)
+    for i in 1:n_odd_l
+        l, e = global_data.E0_data.DegreesOddTorsionBases[i]
+        ab = sign[idx]
+        idx += 1
+        ea = div(ab, l^e)
+        a = l^ea % l^e
+        b = ab % l^e
+        odd_kernel_coeffs[i] = (a, b)
+    end
+
+    a24pub = A_to_a24(pk)
+
+    # isogeny of dimension 1
+    n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
+    odd_isog_kers = Proj1{FqFieldElem}[]
+    odd_isog_degrees = Tuple{Int, Int}[]
+    for i in 1:n_odd_l
+        l, e = global_data.E0_data.DegreesOddTorsionBases[i]
+        a, b = odd_kernel_coeffs[i]
+        g = gcd(a, b, l^e)
+        d = div(l^e, g)
+        if d > 0
+            xPodd, xQodd, xPQodd = torsion_basis(pk, l, e)
+            xPodd = ladder(g, xPodd, a24pub)
+            xQodd = ladder(g, xQodd, a24pub)
+            xPQodd = ladder(g, xPQodd, a24pub)
+            a, b = div(a, g), div(b, g)
+            if a % l == 0
+                a = (a * invmod(b, d)) % d
+                Kfull = ladder3pt(a, xQodd, xPodd, xPQodd, a24pub)
+            else
+                b = (b * invmod(a, d)) % d
+                Kfull = ladder3pt(b, xPodd, xQodd, xPQodd, a24pub)
+            end
+            e = Int(log(l, d))
+            push!(odd_isog_kers, Kfull)
+            push!(odd_isog_degrees, (l, e))
+        end
+    end
+    a24mid = a24pub
+    n_isog = length(odd_isog_kers)
+    for i in 1:n_isog
+        Kfull = odd_isog_kers[i]
+        l, e = odd_isog_degrees[i]
+        for k in 1:e
+            K = ladder(l^(e - k), Kfull, a24mid)
+            a24mid, odd_isog_kers = odd_isogeny(a24mid, K, l, odd_isog_kers)
+            Kfull = odd_isog_kers[1]
+        end
+    end
+
+    a24mid, _ = Montgomery_normalize(a24mid, Proj1{FqFieldElem}[])
+    Amid = Montgomery_coeff(a24mid)
+    xPmid, xQmid, xPQmid = torsion_basis(Amid, ExponentForTorsion)
+
+    # isogeny of dimension 2
+    P1P2 = CouplePoint(xPmid, xPaux)
+    Q1Q2 = CouplePoint(xQmid, xQaux)
+    PQ1PQ2 = CouplePoint(xPQmid, xPQaux)
+    Es, _ = product_isogeny_sqrt(a24mid, a24aux, P1P2, Q1Q2, PQ1PQ2, CouplePoint{FqFieldElem}[], CouplePoint{FqFieldElem}[], ExponentForTorsion, StrategiesDim2[ExponentForTorsion])
+
+    for E in Es
+        a24cha = A_to_a24(E)
+        a24cha, _ = Montgomery_normalize(a24cha, Proj1{FqFieldElem}[])
+        Acha = Montgomery_coeff(a24cha)
+        xPcha, xQcha, xPQcha = torsion_basis(Acha, SQISIGN_challenge_length)
+        if bit_s == 1
+            Kcha_dual = ladder3pt(s, xPcha, xQcha, xPQcha, a24cha)
+            P = xQcha
+        else
+            Kcha_dual = ladder3pt(s, xQcha, xPcha, xPQcha, a24cha)
+            P = xPcha
+        end
+        a24com, tmp = two_e_iso(a24cha, Kcha_dual, SQISIGN_challenge_length, [P], StrategyChallenge)
+        a24com, tmp = Montgomery_normalize(a24com, [tmp[1]])
+        Kcha_d = tmp[1]
+        Acom = Montgomery_coeff(a24com)
+        c = challenge(Acom, m)
+        xPcom, xQcom, xPQcom = torsion_basis(Acom, SQISIGN_challenge_length)
+        Kcha = ladder3pt(c, xPcom, xQcom, xPQcom, a24com)
+        Kcha == ladder(r, Kcha_d, a24com) && return true
+    end
+
+    return false
 end
