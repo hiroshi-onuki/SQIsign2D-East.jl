@@ -152,8 +152,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
                     xQodd = ladder(l^(e-f), xQodd, a24pub)
                     xPQodd = ladder(l^(e-f), xPQodd, a24pub)
                     a, b = kernel_coefficients(involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
-                    println("a = ", a, ", b = ", b)
-                    a, b = M_odd_images[i] * [a, b]
+                    a, b = l^(e-f) * M_odd_images[i] * [a, b]
                     Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
                 else
                     a, b = 0, 0
