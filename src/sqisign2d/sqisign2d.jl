@@ -85,7 +85,7 @@ function commitment(global_data::GlobalData)
 end
 
 
-function challenge(A::FqFieldElem, m::String, global_data::GlobalData)
+function challenge(A::FqFieldElem, m::String)
     if SQISIGN_challenge_length <= 256
         h = sha3_256(string(A) * m)
     else
@@ -103,7 +103,7 @@ function challenge(A::FqFieldElem, m::String, global_data::GlobalData)
     return c
 end
 
-function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
+function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_compact::Bool=false)
     A = pk
     a24pub = A_to_a24(A)
     Isec, Dsec, xPsec, xQsec, xPQsec, odd_images, M_odd_images = sk
@@ -114,7 +114,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         a24com = A_to_a24(Acom)
 
         # compute challenge and the pull-back of the corresponding ideal
-        cha = challenge(Acom, m, global_data)
+        cha = challenge(Acom, m)
         a, b = Mcom * [1, cha]
         a, b, c, d = global_data.E0_data.Matrix_2ed_inv * [b, 0, -a, 0]
         alpha = QOrderElem(a, b, c, d)
@@ -136,9 +136,6 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         xPres, xQres, xPQres = action_of_matrix(Malpha, a24cha, xPcha, xQcha, xPQcha)
         Dcom_inv = invmod(Dcom, BigInt(1) << ExponentForTorsion)
         xPres, xQres, xPQres = ladder(Dcom_inv, xPres, a24cha), ladder(Dcom_inv, xQres, a24cha), ladder(Dcom_inv, xPQres, a24cha)
-        xPfix, xQfix, xPQfix = torsion_basis(Acha, ExponentForTorsion)
-        n1, n2, n3, n4 = ec_bi_dlog_response(Acha, xPfix, xQfix, xPQfix, xPres, xQres, xPQres, global_data.E0_data)
-        Mres = [n1 n3; n2 n4]
 
         q = div(norm(alpha), d*nI)
         n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
@@ -201,26 +198,79 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
                 images = tmp[4:end]
             end
         end
-
         Aaux = Montgomery_coeff(a24aux)
-        xPaux, xQaux, xPQaux = action_of_matrix(Mres, a24aux, xPaux, xQaux, xPQaux)
 
-        # compress the signature
-        sign = Vector{UInt8}(undef, SQISIGN2D_signature_length)
-        idx = 1
-        Acom_byte = Fq_to_bytes(Acom)
-        sign[idx:idx+SQISIGN2D_Fp2_length-1] = Acom_byte
-        idx += SQISIGN2D_Fp2_length
-        Aaux_byte = Fq_to_bytes(Aaux)
-        sign[idx:idx+SQISIGN2D_Fp2_length-1] = Aaux_byte
-        idx += SQISIGN2D_Fp2_length
+        if !is_compact
+            # modify xPaux, xQaux, xPQaux to be the images of the fixed torions
+            xPfix, xQfix, xPQfix = torsion_basis(Acha, ExponentForTorsion)
+            n1, n2, n3, n4 = ec_bi_dlog_response(Acha, xPfix, xQfix, xPQfix, xPres, xQres, xPQres, global_data.E0_data)
+            Mres = [n1 n3; n2 n4]
+            xPaux, xQaux, xPQaux = action_of_matrix(Mres, a24aux, xPaux, xQaux, xPQaux)
+    
+            # compress the signature
+            sign = Vector{UInt8}(undef, SQISIGN2D_signature_length)
+            idx = 1
+            Acom_byte = Fq_to_bytes(Acom)
+            sign[idx:idx+SQISIGN2D_Fp2_length-1] = Acom_byte
+            idx += SQISIGN2D_Fp2_length
+            Aaux_byte = Fq_to_bytes(Aaux)
+            sign[idx:idx+SQISIGN2D_Fp2_length-1] = Aaux_byte
+            idx += SQISIGN2D_Fp2_length
 
-        xPfix, xQfix, xPQfix = torsion_basis(Aaux, ExponentForTorsion)
-        n1, n2, n3, n4 = ec_bi_dlog_response(Aaux, xPaux, xQaux, xPQaux, xPfix, xQfix, xPQfix, global_data.E0_data)
-        for n in [n1, n2, n3, n4]
-            n_byte = integer_to_bytes(n, SQISIGN2D_2a_length)
-            sign[idx:idx+SQISIGN2D_2a_length-1] = n_byte
-            idx += SQISIGN2D_2a_length
+            xPfix, xQfix, xPQfix = torsion_basis(Aaux, ExponentForTorsion)
+            n1, n2, n3, n4 = ec_bi_dlog_response(Aaux, xPaux, xQaux, xPQaux, xPfix, xQfix, xPQfix, global_data.E0_data)
+            for n in [n1, n2, n3, n4]
+                n_byte = integer_to_bytes(n, SQISIGN2D_2a_length)
+                sign[idx:idx+SQISIGN2D_2a_length-1] = n_byte
+                idx += SQISIGN2D_2a_length
+            end
+
+        else
+            xPsec, xQsec, xPQsec = xDBLe(xPsec, a24pub, ExponentFull - ExponentForTorsion), xDBLe(xQsec, a24pub, ExponentFull - ExponentForTorsion), xDBLe(xPQsec, a24pub, ExponentFull - ExponentForTorsion)
+            eval_points = vcat([xPsec, xQsec, xPQsec], odd_kernels)
+            a24mid = a24pub
+            for i in 1:n_odd_l
+                l, e = global_data.E0_data.DegreesOddTorsionBases[i]
+                a, b = odd_kernel_coeffs[i]
+                g = gcd(a, b, l^e)
+                f = e - Int(log(l, g))
+                println("a = $a, b = $b, g = $g, f = $f")
+                for k in 1:f
+                    K = ladder(l^(f - k), eval_points[i + 3], a24mid)
+                    @assert is_infinity(ladder(l, K, a24mid))
+                    @assert !is_infinity(K)
+                    a24mid, eval_points = odd_isogeny(a24mid, K, l, eval_points)
+                end
+            end
+            xPmid, xQmid, xPQmid = eval_points[1:3]
+            @assert is_infinity(xDBLe(xPmid, a24mid, ExponentForTorsion))
+            @assert is_infinity(xDBLe(xQmid, a24mid, ExponentForTorsion))
+            @assert is_infinity(xDBLe(xPQmid, a24mid, ExponentForTorsion))
+            @assert !is_infinity(xDBLe(xPmid, a24mid, ExponentForTorsion-1))
+            @assert !is_infinity(xDBLe(xQmid, a24mid, ExponentForTorsion-1))
+            @assert !is_infinity(xDBLe(xPQmid, a24mid, ExponentForTorsion-1))
+            a24mid, (xPmid, xQmid, xPQmid) = Montgomery_normalize(a24mid, [xPmid, xQmid, xPQmid])
+            Amid = Montgomery_coeff(a24mid)
+            xPfix, xQfix, xPQfix = torsion_basis(Amid, ExponentForTorsion)
+            n1, n2, n3, n4 = ec_bi_dlog_response(Amid, xPfix, xQfix, xPQfix, xPmid, xQmid, xPQmid, global_data.E0_data)
+
+            a24aux, xPaux, xQaux, xPQaux, _ = d2isogeny(a24aux, a24cha, xPaux, xQaux, xPQaux, xPres, xQres, xPQres, ExponentForTorsion, q, Proj1{FqFieldElem}[], global_data)
+            Aaux = Montgomery_coeff(a24aux)
+            xPfix, xQfix, xPQfix = torsion_basis(Aaux, ExponentForTorsion)
+            m1, m2, m3, m4 = ec_bi_dlog_response(Aaux, xPaux, xQaux, xPQaux, xPfix, xQfix, xPQfix, global_data.E0_data)
+            c = invmod(BigInt(1) << ExponentForTorsion - q, BigInt(1) << ExponentForTorsion)
+            M = c * [m1 m3; m2 m4] * [n1 n3; n2 n4]
+
+            # test
+            xP1, xQ1, xPQ1 = torsion_basis(Amid, ExponentForTorsion)
+            xP2, xQ2, xPQ2 = action_of_matrix(M, a24aux, xPfix, xQfix, xPQfix)
+            a24cha_d, _, _, _, _ = d2isogeny(a24mid, a24aux, xP1, xQ1, xPQ1, xP2, xQ2, xPQ2, ExponentForTorsion, q, Proj1{FqFieldElem}[], global_data)
+            @assert jInvariant_a24(a24cha_d) == jInvariant_a24(a24cha)
+
+            # compress the signature
+            sign = Vector{UInt8}(undef, SQISIGN2D_signature_length)
+            idx = 1
+            @assert false
         end
 
         # coefficient (a:b) is of the form (l^f:b), where 0 < f <= e
@@ -243,6 +293,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData)
         end
 
         return sign
+        
     end
 end
 

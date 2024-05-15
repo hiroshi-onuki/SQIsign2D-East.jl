@@ -5,7 +5,7 @@ function check(param::Module, num::Int)
     for _ in 1:num
         pk, sk = param.key_gen(global_data)
         m = "hello"
-        sign = param.signing(pk, sk, m, global_data)
+        sign = param.signing(pk, sk, m, global_data, true)
         println("sign len: ", length(sign))
         @assert param.verify(pk, sign, m, global_data)
     end
