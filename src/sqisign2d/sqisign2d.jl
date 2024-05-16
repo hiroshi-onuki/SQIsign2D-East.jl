@@ -250,6 +250,9 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
             xPfix, xQfix, xPQfix = torsion_basis(Amid, ExponentForTorsion)
             n1, n2, n3, n4 = ec_bi_dlog_response(Amid, xPfix, xQfix, xPQfix, xPmid, xQmid, xPQmid, global_data.E0_data)
 
+            a24aux_normal, _ = Montgomery_normalize(a24aux, Proj1{FqFieldElem}[])
+            Aaux_normal = Montgomery_coeff(a24aux_normal)
+            d2cod_bit = lex_order(Aaux_normal, Acha) ? 0 : 1
             a24aux, xPaux, xQaux, xPQaux, _ = d2isogeny(a24aux, a24cha, xPaux, xQaux, xPQaux, xPres, xQres, xPQres, ExponentForTorsion, q, Proj1{FqFieldElem}[], global_data)
             Aaux = Montgomery_coeff(a24aux)
             xPfix, xQfix, xPQfix = torsion_basis(Aaux, ExponentForTorsion)
@@ -291,6 +294,8 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
             sign[idx:idx+SQISIGN2D_2a_length-1] = integer_to_bytes(r, SQISIGN2D_2a_length)
             idx += SQISIGN2D_2a_length
 
+            sign[idx] = d2cod_bit
+            idx += 1
         end
 
         # coefficient (a:b) is of the form (l^f:b), where 0 < f <= e
@@ -432,6 +437,8 @@ function verify_compact(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_
     idx += SQISIGN2D_2a_length
     r = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
     idx += SQISIGN2D_2a_length
+    d2cod_bit = sign[idx]
+    idx += 1
 
     n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
     odd_kernel_coeffs = Vector{Tuple{Int, Int}}(undef, n_odd_l)
@@ -495,28 +502,33 @@ function verify_compact(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_
     Q1Q2 = CouplePoint(xQmid, xQaux)
     PQ1PQ2 = CouplePoint(xPQmid, xPQaux)
     Es, _ = product_isogeny_sqrt(a24mid, a24aux, P1P2, Q1Q2, PQ1PQ2, CouplePoint{FqFieldElem}[], CouplePoint{FqFieldElem}[], ExponentForTorsion, StrategiesDim2[ExponentForTorsion])
-
-    for E in Es
-        a24cha = A_to_a24(E)
-        a24cha, _ = Montgomery_normalize(a24cha, Proj1{FqFieldElem}[])
-        Acha = Montgomery_coeff(a24cha)
-        xPcha, xQcha, xPQcha = torsion_basis(Acha, SQISIGN_challenge_length)
-        if bit_s == 1
-            Kcha_dual = ladder3pt(s, xPcha, xQcha, xPQcha, a24cha)
-            P = xQcha
-        else
-            Kcha_dual = ladder3pt(s, xQcha, xPcha, xPQcha, a24cha)
-            P = xPcha
-        end
-        a24com, tmp = two_e_iso(a24cha, Kcha_dual, SQISIGN_challenge_length, [P], StrategyChallenge)
-        a24com, tmp = Montgomery_normalize(a24com, [tmp[1]])
-        Kcha_d = tmp[1]
-        Acom = Montgomery_coeff(a24com)
-        c = challenge(Acom, m)
-        xPcom, xQcom, xPQcom = torsion_basis(Acom, SQISIGN_challenge_length)
-        Kcha = ladder3pt(c, xPcom, xQcom, xPQcom, a24com)
-        Kcha == ladder(r, Kcha_d, a24com) && return true
+    A1, _ = Montgomery_normalize(A_to_a24(Es[1]), Proj1{FqFieldElem}[])
+    A2, _ = Montgomery_normalize(A_to_a24(Es[2]), Proj1{FqFieldElem}[])
+    A1 = Montgomery_coeff(A1)
+    A2 = Montgomery_coeff(A2)
+    !lex_order(A1, A2) && ((A1, A2) = (A2, A1))
+    if d2cod_bit == 1
+        Acha = A1
+    else
+        Acha = A2
     end
 
-    return false
+    a24cha = A_to_a24(Acha)
+    xPcha, xQcha, xPQcha = torsion_basis(Acha, SQISIGN_challenge_length)
+    if bit_s == 1
+        Kcha_dual = ladder3pt(s, xPcha, xQcha, xPQcha, a24cha)
+        P = xQcha
+    else
+        Kcha_dual = ladder3pt(s, xQcha, xPcha, xPQcha, a24cha)
+        P = xPcha
+    end
+    a24com, tmp = two_e_iso(a24cha, Kcha_dual, SQISIGN_challenge_length, [P], StrategyChallenge)
+    a24com, tmp = Montgomery_normalize(a24com, [tmp[1]])
+    Kcha_d = tmp[1]
+    Acom = Montgomery_coeff(a24com)
+    c = challenge(Acom, m)
+    xPcom, xQcom, xPQcom = torsion_basis(Acom, SQISIGN_challenge_length)
+    Kcha = ladder3pt(c, xPcom, xQcom, xPQcom, a24com)
+
+    return Kcha == ladder(r, Kcha_d, a24com)
 end
