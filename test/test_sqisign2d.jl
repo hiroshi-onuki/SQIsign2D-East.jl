@@ -18,6 +18,6 @@ end
 check(SQIsign2D.Level1, 10, false)
 check(SQIsign2D.Level1, 10, true)
 check(SQIsign2D.Level3, 10, false)
-#check(SQIsign2D.Level3, 10, true)
+check(SQIsign2D.Level3, 10, true)
 check(SQIsign2D.Level5, 10, false)
-#check(SQIsign2D.Level5, 10, true)
+check(SQIsign2D.Level5, 10, true)
