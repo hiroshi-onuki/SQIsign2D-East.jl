@@ -107,6 +107,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
     A = pk
     a24pub = A_to_a24(A)
     Isec, Dsec, xPsec, xQsec, xPQsec, odd_images, M_odd_images = sk
+    two_to_a = BigInt(1) << ExponentForTorsion
 
     while true
         # compute commitment
@@ -139,7 +140,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
         # compute the image under the response sigma
         Malpha = quaternion_to_matrix(involution(alpha), global_data.E0_data.Matrices_2e)
         xPres, xQres, xPQres = action_of_matrix(Malpha, a24cha, xPcha, xQcha, xPQcha)
-        Dcom_inv = invmod(Dcom, BigInt(1) << ExponentForTorsion)
+        Dcom_inv = invmod(Dcom, two_to_a)
         xPres, xQres, xPQres = ladder(Dcom_inv, xPres, a24cha), ladder(Dcom_inv, xQres, a24cha), ladder(Dcom_inv, xPQres, a24cha)
 
         q = div(norm(alpha), d*nI)
@@ -224,12 +225,33 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
 
             xPfix, xQfix, xPQfix = torsion_basis(Aaux, ExponentForTorsion)
             n1, n2, n3, n4 = ec_bi_dlog_response(Aaux, xPaux, xQaux, xPQaux, xPfix, xQfix, xPQfix, global_data.E0_data)
-            for n in [n1, n2, n3, n4]
-                n_byte = integer_to_bytes(n, SQISIGN2D_2a_length)
-                sign[idx:idx+SQISIGN2D_2a_length-1] = n_byte
-                idx += SQISIGN2D_2a_length
+            if n1 & 1 == 1
+                n1inv = invmod(n1, two_to_a)
+                n1d = sqrt_mod_2power(n1^2 % two_to_a, ExponentForTorsion)
+                sign[idx] = ((n1d - n1) % two_to_a == 0 || (n1d + n1) % two_to_a == 0) ? 0x02 : 0x00
+                idx += 1
+                n2 = (n2 * n1inv) % two_to_a
+                n3 = (n3 * n1inv) % two_to_a
+                n4 = (n4 * n1inv) % two_to_a
+                for n in [n2, n3, n4]
+                    n_bytes = integer_to_bytes(n, SQISIGN2D_2a_length)
+                    sign[idx:idx+SQISIGN2D_2a_length-1] = n_bytes
+                    idx += SQISIGN2D_2a_length
+                end
+            else
+                n2inv = invmod(n2, two_to_a)
+                n2d = sqrt_mod_2power(n2^2 % two_to_a, ExponentForTorsion)
+                sign[idx] = ((n2d - n2) % two_to_a == 0 || (n2d + n2) % two_to_a == 0) ? 0x03 : 0x01
+                idx += 1
+                n1 = (n1 * n2inv) % two_to_a
+                n3 = (n3 * n2inv) % two_to_a
+                n4 = (n4 * n2inv) % two_to_a
+                for n in [n1, n3, n4]
+                    n_bytes = integer_to_bytes(n, SQISIGN2D_2a_length)
+                    sign[idx:idx+SQISIGN2D_2a_length-1] = n_bytes
+                    idx += SQISIGN2D_2a_length
+                end
             end
-
         else
             xPsec, xQsec, xPQsec = xDBLe(xPsec, a24pub, ExponentFull - ExponentForTorsion), xDBLe(xQsec, a24pub, ExponentFull - ExponentForTorsion), xDBLe(xPQsec, a24pub, ExponentFull - ExponentForTorsion)
             eval_points = vcat([xPsec, xQsec, xPQsec], odd_kernels)
@@ -330,15 +352,23 @@ function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::Gl
     Aaux = bytes_to_Fq(sign[idx:idx+SQISIGN2D_Fp2_length-1], global_data.Fp2)
     a24aux = A_to_a24(Aaux)
     idx += SQISIGN2D_Fp2_length
-    n = Vector{BigInt}(undef, 4)
-    for i in 1:4
+    is_n1_odd = sign[idx] & 1 == 0x00
+    is_adjust_sqrt = sign[idx] & 2 == 0x00
+    idx += 1
+    n = Vector{BigInt}(undef, 3)
+    for i in 1:3
         n[i] = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
         idx += SQISIGN2D_2a_length
     end
+    if is_n1_odd
+        n1, n2, n3, n4 = 1, n[1], n[2], n[3]
+    else
+        n1, n2, n3, n4 = n[1], 1, n[2], n[3]
+    end
     xPfix, xQfix, xPQfix = torsion_basis(Aaux, ExponentForTorsion)
-    xPaux = linear_comb_2_e(n[1], n[2], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
-    xQaux = linear_comb_2_e(n[3], n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
-    xPQaux = linear_comb_2_e(n[1]- n[3], n[2] - n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xPaux = linear_comb_2_e(n1, n2, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xQaux = linear_comb_2_e(n3, n4, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xPQaux = linear_comb_2_e(n1 - n3, n2 - n4, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
     n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
     odd_kernel_coeffs = Vector{Tuple{Int, Int}}(undef, n_odd_l)
     for i in 1:n_odd_l
@@ -362,6 +392,19 @@ function verify(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_data::Gl
     a24cha, _ = Montgomery_normalize(a24cha, Proj1{FqFieldElem}[])
     Acha = Montgomery_coeff(a24cha)
     xPres, xQres, xPQres = torsion_basis(Acha, ExponentForTorsion)
+
+    # adjust <(Pcha, Paux), (Qcha, Qaux)> to be isotropic w.r.t. the Weil pairing
+    two_to_a = BigInt(1) << ExponentForTorsion
+    w_aux = Weil_pairing_2power(Aaux, xPaux, xQaux, xPQaux, ExponentForTorsion)
+    w_res = Weil_pairing_2power(Acha, xPres, xQres, xPQres, ExponentForTorsion)
+    e_aux = fq_dlog_power_of_2_opt(w_aux, global_data.E0_data.dlog_data_res)
+    e_res = fq_dlog_power_of_2_opt(w_res, global_data.E0_data.dlog_data_res)
+    e = e_res * invmod(-e_aux, two_to_a) % two_to_a
+    ed = sqrt_mod_2power(e, ExponentForTorsion)
+    is_adjust_sqrt && (ed += two_to_a >> 1)
+    xPaux = ladder(ed, xPaux, a24aux)
+    xQaux = ladder(ed, xQaux, a24aux)
+    xPQaux = ladder(ed, xPQaux, a24aux)
 
     # isogeny of dimension 2
     P1P2 = CouplePoint(xPres, xPaux)

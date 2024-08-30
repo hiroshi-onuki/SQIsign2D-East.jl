@@ -1,4 +1,4 @@
-export integer_square_root, integer_to_bytes, bytes_to_integer
+export integer_square_root, integer_to_bytes, bytes_to_integer, sqrt_mod_2power
 
 # floor(sqrt(n))
 function integer_square_root(n::T) where T <: Integer
@@ -27,4 +27,15 @@ function bytes_to_integer(bytes::Vector{UInt8})
         n = (n << 8) | byte
     end
     return n
+end
+
+# square root of n modulo 2^e
+function sqrt_mod_2power(n::BigInt, e::Int)
+    x = 1
+    N = BigInt(1) << 3
+    for i in 4:e
+        N <<= 1
+        (x^2 - n) % N != 0 && (x += N >> 2)
+    end
+    return x
 end
