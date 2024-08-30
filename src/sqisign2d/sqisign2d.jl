@@ -289,10 +289,33 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
             sign[idx:idx+SQISIGN2D_Fp2_length-1] = Aaux_byte
             idx += SQISIGN2D_Fp2_length
 
-            for n in [M[1, 1], M[2, 1], M[1, 2], M[2, 2]]
-                n_byte = integer_to_bytes(n, SQISIGN2D_2a_length)
-                sign[idx:idx+SQISIGN2D_2a_length-1] = n_byte
-                idx += SQISIGN2D_2a_length
+            n1, n2, n3, n4 = M
+            if n1 & 1 == 1
+                n1inv = invmod(n1, two_to_a)
+                n1d = sqrt_mod_2power(n1^2 % two_to_a, ExponentForTorsion)
+                sign[idx] = ((n1d - n1) % two_to_a == 0 || (n1d + n1) % two_to_a == 0) ? 0x02 : 0x00
+                idx += 1
+                n2 = (n2 * n1inv) % two_to_a
+                n3 = (n3 * n1inv) % two_to_a
+                n4 = (n4 * n1inv) % two_to_a
+                for n in [n2, n3, n4]
+                    n_bytes = integer_to_bytes(n, SQISIGN2D_2a_length)
+                    sign[idx:idx+SQISIGN2D_2a_length-1] = n_bytes
+                    idx += SQISIGN2D_2a_length
+                end
+            else
+                n2inv = invmod(n2, two_to_a)
+                n2d = sqrt_mod_2power(n2^2 % two_to_a, ExponentForTorsion)
+                sign[idx] = ((n2d - n2) % two_to_a == 0 || (n2d + n2) % two_to_a == 0) ? 0x03 : 0x01
+                idx += 1
+                n1 = (n1 * n2inv) % two_to_a
+                n3 = (n3 * n2inv) % two_to_a
+                n4 = (n4 * n2inv) % two_to_a
+                for n in [n1, n3, n4]
+                    n_bytes = integer_to_bytes(n, SQISIGN2D_2a_length)
+                    sign[idx:idx+SQISIGN2D_2a_length-1] = n_bytes
+                    idx += SQISIGN2D_2a_length
+                end
             end
 
             xPcha, xQcha, xPQcha = torsion_basis(Acha, SQISIGN_challenge_length)
@@ -463,16 +486,24 @@ function verify_compact(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_
     idx = 1
     Aaux = bytes_to_Fq(sign[idx:idx+SQISIGN2D_Fp2_length-1], global_data.Fp2)
     idx += SQISIGN2D_Fp2_length
-    n = Vector{BigInt}(undef, 4)
-    for i in 1:4
+    is_n1_odd = sign[idx] & 1 == 0x00
+    is_adjust_sqrt = sign[idx] & 2 == 0x00
+    idx += 1
+    n = Vector{BigInt}(undef, 3)
+    for i in 1:3
         n[i] = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
         idx += SQISIGN2D_2a_length
     end
+    if is_n1_odd
+        n1, n2, n3, n4 = 1, n[1], n[2], n[3]
+    else
+        n1, n2, n3, n4 = n[1], 1, n[2], n[3]
+    end
     xPfix, xQfix, xPQfix = torsion_basis(Aaux, ExponentForTorsion)
     a24aux = A_to_a24(Aaux)
-    xPaux = linear_comb_2_e(n[1], n[2], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
-    xQaux = linear_comb_2_e(n[3], n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
-    xPQaux = linear_comb_2_e(n[1]- n[3], n[2] - n[4], xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xPaux = linear_comb_2_e(n1, n2, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xQaux = linear_comb_2_e(n3, n4, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
+    xPQaux = linear_comb_2_e(n1- n3, n2 - n4, xPfix, xQfix, xPQfix, a24aux, ExponentForTorsion)
 
     bit_s = sign[idx]
     idx += 1
@@ -539,6 +570,19 @@ function verify_compact(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_
     a24mid, _ = Montgomery_normalize(a24mid, Proj1{FqFieldElem}[])
     Amid = Montgomery_coeff(a24mid)
     xPmid, xQmid, xPQmid = torsion_basis(Amid, ExponentForTorsion)
+
+    # adjust <(Pmid, Pmid), (Qpub, Qaux)> to be isotropic w.r.t. the Weil pairing
+    two_to_a = BigInt(1) << ExponentForTorsion
+    w_aux = Weil_pairing_2power(Aaux, xPaux, xQaux, xPQaux, ExponentForTorsion)
+    w_mid = Weil_pairing_2power(Amid, xPmid, xQmid, xPQmid, ExponentForTorsion)
+    e_aux = fq_dlog_power_of_2_opt(w_aux, global_data.E0_data.dlog_data_res)
+    e_mid = fq_dlog_power_of_2_opt(w_mid, global_data.E0_data.dlog_data_res)
+    e = e_mid * invmod(-e_aux, two_to_a) % two_to_a
+    ed = sqrt_mod_2power(e, ExponentForTorsion)
+    is_adjust_sqrt && (ed += two_to_a >> 1)
+    xPaux = ladder(ed, xPaux, a24aux)
+    xQaux = ladder(ed, xQaux, a24aux)
+    xPQaux = ladder(ed, xPQaux, a24aux)
 
     # isogeny of dimension 2
     P1P2 = CouplePoint(xPmid, xPaux)

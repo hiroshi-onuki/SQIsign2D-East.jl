@@ -12,6 +12,6 @@ const SQISIGN_challenge_length = ExponentFull - ExponentForTorsion
 const SQISIGN2D_Fp2_length = 66
 const SQISIGN2D_2a_length = Int(ceil(ExponentForTorsion/8))
 const SQISIGN2D_signature_length = 2 * SQISIGN2D_Fp2_length + 3 * SQISIGN2D_2a_length + 2
-const CompactSQISIGN2D_signature_length = SQISIGN2D_Fp2_length + 6 * SQISIGN2D_2a_length + 3
+const CompactSQISIGN2D_signature_length = SQISIGN2D_Fp2_length + 5 * SQISIGN2D_2a_length + 4
 
 const SmallPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
