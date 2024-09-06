@@ -75,8 +75,8 @@ end
 # return alpha in I s.t. q_I(alpha) is odd and
 # there exist d s.t. d | q_I(alpha), d | prod(factors),
 # q_I(alpha)/d < 2^a,
-# and -D*(2^ExponentFull - D) is a quadratic residue modulo N, where D = q_I(alpha)/d(2^c - q_I(alpha)/d)
-function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{Tuple{Int, Int}}, N::BigInt)
+# and -D*(2^ExponentFull - D) is divisible by l, where D = q_I(alpha)/d(2^c - q_I(alpha)/d)
+function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{Tuple{Int, Int}}, l::Int)
     q(x, y) = quadratic_form(QOrderElem(x), QOrderElem(y))
     bound = BigInt(1) << a
 
@@ -135,7 +135,7 @@ function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{
                             if newNd < bound
                                 D = newNd * (bound - newNd)
                                 D = D * ((BigInt(1) << ExponentFull) - D)
-                                if quadratic_residue_symbol(-D, N) == 1
+                                if D % l == 0
                                     newNd * (bound - newNd) < BigInt(1) << ExponentFull && return alpha, d, true
                                 end
                             end

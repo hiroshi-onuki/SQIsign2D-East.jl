@@ -16,12 +16,21 @@ function sample_random_ideal_2e(e::Int)
     return pushforward((1 + a) * Quaternion_1 + a * Quaternion_j, I)
 end
 
-# return a random prime <= 2^KLPT_secret_key_prime_size and = 3 mod 4
-function random_secret_prime()
+# return a random prime <= 2^KLPT_secret_key_prime_size and = (l|D) = -1
+function random_secret_prime(l::Int)
     B = BigInt(floor(p^(1/4)))
     n = rand(1:B)
-    while !is_probable_prime(n)
+    while !is_probable_prime(n) || quadratic_residue_symbol(l, n) != -1
         n = rand(1:B)
+    end
+    return n
+end
+
+# return a random prime in [lB, uB]
+function random_prime(lB::BigInt, uB::BigInt)
+    n = rand(lB:uB)
+    while !is_probable_prime(n)
+        n = rand(lB:uB)
     end
     return n
 end
@@ -50,7 +59,7 @@ function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}
 end
 
 function key_gen(global_data::GlobalData)
-    D_sec = random_secret_prime()
+    D_sec = random_secret_prime(FactorForAuxiliaryDegree)
     a24, xP, xQ, xPQ, odd_images, I_sec = RandIsogImages(D_sec, global_data, true)
     a24, images = Montgomery_normalize(a24, vcat([xP, xQ, xPQ], odd_images))
     xP, xQ, xPQ = images[1:3]
@@ -71,7 +80,7 @@ function key_gen(global_data::GlobalData)
 end
 
 function commitment(global_data::GlobalData)
-    D_sec = random_secret_prime()
+    D_sec = random_prime(BigInt(floor(p^(1/2))), BigInt(1) << ExponentFull)
     a24, xP, xQ, xPQ, I_sec = RandIsogImages(D_sec, global_data, false)
     a24, (xP, xQ, xPQ) = Montgomery_normalize(a24, [xP, xQ, xPQ])
     A = Montgomery_coeff(a24)
@@ -134,7 +143,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
         Icomcha = intersection(Icom, Icha)
         I = involution_product(Isec, Icomcha)
         nI = Dsec * Dcom << SQISIGN_challenge_length
-        alpha, d, found = element_for_response(I, nI, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, Dsec)
+        alpha, d, found = element_for_response(I, nI, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, FactorForAuxiliaryDegree)
         !found && continue
 
         # compute the image under the response sigma
