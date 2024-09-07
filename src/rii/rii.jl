@@ -53,11 +53,6 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
         end
 
         if s != 0
-            xPtmp, xQtmp, xPQtmp = action_on_torsion_basis(d_inv * alpha, a24d, xPd, xQd, xPQd, global_data.E0_data)
-            w1 = Weil_pairing_2power(Montgomery_coeff(a24), xP, xQ, xPQ, ExponentFull)
-            w2 = Weil_pairing_2power(Montgomery_coeff(a24d), xPtmp, xQtmp, xPQtmp, ExponentFull)
-            @assert w1 * w2 == 1
-            
             # the first (4,4)-isogeny is E * E' -> E * E' represented by the matrix [-s hat(phi); s*phi 1]
             beta1 = -s + d_inv * l * alpha
             beta2 = s + d_inv * alpha
@@ -66,22 +61,6 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
             xP1, xQ1, xPQ1 = action_of_matrix(M1, a24, xP, xQ, xPQ)
             xP2, xQ2, xPQ2 = action_of_matrix(M2, a24d, xPd, xQd, xPQd)
 
-            if is_infinity(xDBLe(xP1, a24, ExponentFull-3))
-                w1 = Weil_pairing_2power(Montgomery_coeff(a24), xQ1, xPQ1, xP1, ExponentFull-2)
-            elseif is_infinity(xDBLe(xQ1, a24, ExponentFull-3))
-                w1 = Weil_pairing_2power(Montgomery_coeff(a24), xPQ1, xP1, xQ1, ExponentFull-2)
-            else
-                w1 = Weil_pairing_2power(Montgomery_coeff(a24), xP1, xQ1, xPQ1, ExponentFull-2)
-            end
-            if is_infinity(xDBLe(xP2, a24d, ExponentFull-3))
-                w2 = Weil_pairing_2power(Montgomery_coeff(a24d), xQ2, xPQ2, xP2, ExponentFull-2)
-            elseif is_infinity(xDBLe(xQ2, a24d, ExponentFull-3))
-                w2 = Weil_pairing_2power(Montgomery_coeff(a24d), xPQ2, xP2, xQ2, ExponentFull-2)
-            else
-                w2 = Weil_pairing_2power(Montgomery_coeff(a24d), xP2, xQ2, xPQ2, ExponentFull-2)
-            end
-            @assert w1 * w2 == 1
-
             a24_1 = a24
             a24_2 = a24d
             e = -2
@@ -89,8 +68,7 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
             while n % 2 == 0
                 n >>= 1
                 e += 1
-            end 
-            println("e: ", e)
+            end
             e = max(e, 0)
 
             eval1 = [xP1, xQ1, xPQ1, xP, xQ, xPQ]
@@ -103,8 +81,6 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
                 else
                     K = xDBLe(xP1, a24, ExponentFull-e)
                 end
-                @assert is_infinity(xDBLe(K, a24, e-2))
-                @assert !is_infinity(xDBLe(K, a24, e-3))
                 a24_1, eval1 = two_e_iso(a24, K, e-2, eval1)
 
                 if is_infinity(xDBLe(xP2, a24d, ExponentFull-3))
@@ -112,8 +88,6 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
                 else
                     K = xDBLe(xP2, a24d, ExponentFull-e)
                 end
-                @assert is_infinity(xDBLe(K, a24d, e-2))
-                @assert !is_infinity(xDBLe(K, a24d, e-3))
                 a24_2, eval2 = two_e_iso(a24d, K, e-2, eval2)
             end
 
@@ -131,34 +105,7 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
                 push!(eval_points_T, CouplePoint(xP1T, xP2T))
             end
 
-            # check
-            T1 = action_of_matrix((BigInt(1) << (ExponentFull - e - 2)) * M1, a24_1, eval1[4], eval1[5], eval1[6], true)
-            T2 = action_of_matrix((BigInt(1) << (ExponentFull - e - 2)) * M2, a24_2, eval2[4], eval2[5], eval2[6], true)
-            @assert is_infinity(xDBLe(T1, a24_1, 2))
-            @assert is_infinity(xDBLe(T2, a24_2, 2))
-            @assert !is_infinity(xDBLe(T1, a24_1, 1))
-            @assert !is_infinity(xDBLe(T2, a24_2, 1))
-            @assert xDBLe(eval1[1], a24_1, ExponentFull-e-2) == T1
-            @assert xDBLe(eval2[1], a24_2, ExponentFull-e-2) == T2
-            for i in 1:3
-                PT = x_add_sub(eval1[i+3], T1, a24_1)
-                if PT != eval_points_T[i][1]
-                    PT = xADD(eval1[i+3], T1, PT)
-                end
-                @assert PT == eval_points_T[i][1]
-            end
-            for i in 1:3
-                PT = x_add_sub(eval2[i+3], T2, a24_2)
-                if PT != eval_points_T[i][2]
-                    PT = xADD(eval2[i+3], T2, PT)
-                end
-                @assert PT == eval_points_T[i][2]
-            end
-
             exp = ExponentFull - e
-            w1 = Weil_pairing_2power(Montgomery_coeff(a24_1), xP1P2[1], xP1P2[1], xPQ1PQ2[1], exp)
-            w2 = Weil_pairing_2power(Montgomery_coeff(a24_2), xP1P2[2], xP1P2[2], xPQ1PQ2[2], exp)
-            @assert w1 * w2 == 1
             if haskey(StrategiesDim2, exp)
                 strategy = StrategiesDim2[exp]
             else
@@ -176,9 +123,7 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
                 idx = 2
                 xPim, xQim, xPQim = images[1][idx], images[2][idx], images[3][idx]
                 A = Es[idx]
-                w1 = Weil_pairing_2power(affine(A), xPim, xQim, xPQim, ExponentFull)
             end
-            @assert w1 == w0^d
 
             return A_to_a24(A), xPim, xQim, xPQim
         else
