@@ -18,7 +18,7 @@ end
 # return the codomain of a random d-isogeny from E and the images of (P, Q),
 # where P, Q is the image of the fixed basis of E0[2^ExponentFull] under an isogeny corresponding to I
 function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T},
-            I::LeftIdeal, nI::BigInt, global_data::GlobalData) where T <: RingElem
+            I::LeftIdeal, nI::BigInt, a24d::Proj1{T}, xPd::Proj1{T}, xQd::Proj1{T}, xPQd::Proj1{T}, global_data::GlobalData) where T <: RingElem
     N = d*((BigInt(1) << ExponentFull) - d)
     l = FactorForAuxiliaryDegree    # we assume l = 3
     extra_path = quadratic_residue_symbol(-N, nI) != 1
@@ -53,10 +53,6 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
         end
 
         if s != 0
-            # compute an extra l-isogeny
-            K = random_point_order_l(a24, p + 1, l, FactorInTwist)
-            a24d, (xPd, xQd, xPQd) = odd_isogeny(a24, K, l, [xP, xQ, xPQ])
-
             xPtmp, xQtmp, xPQtmp = action_on_torsion_basis(d_inv * alpha, a24d, xPd, xQd, xPQd, global_data.E0_data)
             w1 = Weil_pairing_2power(Montgomery_coeff(a24), xP, xQ, xPQ, ExponentFull)
             w2 = Weil_pairing_2power(Montgomery_coeff(a24d), xPtmp, xQtmp, xPQtmp, ExponentFull)
@@ -186,12 +182,7 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
 
             return A_to_a24(A), xPim, xQim, xPQim
         else
-            xPd, xQd, xPQd = action_on_torsion_basis(d_inv * alpha, a24, xP, xQ, xPQ, global_data.E0_data)
-
-            # compute an extra l-isogeny
-            K = random_point_order_l(a24, p + 1, l, FactorInTwist)
-            a24d, (xPd, xQd, xPQd) = odd_isogeny(a24, K, l, [xPd, xQd, xPQd])
-
+            xPd, xQd, xPQd = action_on_torsion_basis(d_inv * alpha, a24d, xPd, xQd, xPQd, global_data.E0_data)
             a24, xP, xQ, xPQ, _ = d2isogeny(a24, a24d, xP, xQ, xPQ, xPd, xQd, xPQd, ExponentFull, d, Proj1{FqFieldElem}[], global_data)
         end
     else

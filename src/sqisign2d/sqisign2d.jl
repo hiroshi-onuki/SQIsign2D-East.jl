@@ -36,11 +36,12 @@ function random_prime(lB::BigInt, uB::BigInt)
 end
 
 function auxiliary_path(a24::Proj1{T}, xP::Proj1{T}, xQ::Proj1{T}, xPQ::Proj1{T}, odd_images::Vector{Proj1{T}},
-                        I::LeftIdeal, nI::BigInt, q::BigInt, global_data::GlobalData) where T <: RingElem
+                        I::LeftIdeal, nI::BigInt, q::BigInt, a24_3::Proj1{T}, xP3::Proj1{T}, xQ3::Proj1{T}, xPQ3::Proj1{T},
+                        global_data::GlobalData) where T <: RingElem
     c = ExponentForTorsion
     r = (BigInt(1) << c) - q
     d = q * r
-    a24d, xPd, xQd, xPQd = GeneralizedRandomIsogImages(d, a24, xP, xQ, xPQ, I, nI, global_data)
+    a24d, xPd, xQd, xPQd = GeneralizedRandomIsogImages(d, a24, xP, xQ, xPQ, I, nI, a24_3, xP3, xQ3, xPQ3, global_data)
 
     q_inv = invmod(q, BigInt(1) << c)
     xP = xDBLe(xP, a24, ExponentFull - c)
@@ -76,7 +77,15 @@ function key_gen(global_data::GlobalData)
         Ms[i] = [a c; b d]
     end
 
-    return Montgomery_coeff(a24), (I_sec, D_sec, xP, xQ, xPQ, odd_images, Ms)
+    # 3-isogeny for the auxiliary isogenies
+    if FactorInTwist
+        K = random_point_order_l(a24, p - 1, FactorForAuxiliaryDegree, true)
+    else
+        K = random_point_order_l(a24, p + 1, FactorForAuxiliaryDegree, false)
+    end
+    a24_3, (xP3, xQ3, xPQ3) = odd_isogeny(a24, K, FactorForAuxiliaryDegree, [xP, xQ, xPQ])
+
+    return Montgomery_coeff(a24), (I_sec, D_sec, xP, xQ, xPQ, odd_images, Ms, a24_3, xP3, xQ3, xPQ3)
 end
 
 function commitment(global_data::GlobalData)
@@ -115,7 +124,7 @@ end
 function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_compact::Bool=false)
     A = pk
     a24pub = A_to_a24(A)
-    Isec, Dsec, xPsec, xQsec, xPQsec, odd_images, M_odd_images = sk
+    Isec, Dsec, xPsec, xQsec, xPQsec, odd_images, M_odd_images, a24_3, xP3, xQ3, xPQ3 = sk
     two_to_a = BigInt(1) << ExponentForTorsion
 
     while true
@@ -176,7 +185,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
         end
 
         # compute the auxiliary ellitic curve
-        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, global_data)
+        a24aux, xPaux, xQaux, xPQaux, images = auxiliary_path(a24pub, xPsec, xQsec, xPQsec, odd_kernels, Isec, Dsec, q, a24_3, xP3, xQ3, xPQ3, global_data)
 
         dd = d
         for i in 1:n_odd_l

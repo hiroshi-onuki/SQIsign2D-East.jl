@@ -15,8 +15,8 @@ function check(param::Module, num::Int, is_compact::Bool)
     end
 end
 
-#check(SQIsign2D.Level1, 100, false)
-#check(SQIsign2D.Level1, 100, true)
+check(SQIsign2D.Level1, 100, false)
+check(SQIsign2D.Level1, 100, true)
 check(SQIsign2D.Level3, 100, false)
 check(SQIsign2D.Level3, 100, true)
 check(SQIsign2D.Level5, 100, false)
