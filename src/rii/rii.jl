@@ -54,7 +54,7 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
 
         if s != 0
             # compute an extra l-isogeny
-            K = random_point_order_l(a24, p + 1, l)
+            K = random_point_order_l(a24, p + 1, l, FactorInTwist)
             a24d, (xPd, xQd, xPQd) = odd_isogeny(a24, K, l, [xP, xQ, xPQ])
 
             xPtmp, xQtmp, xPQtmp = action_on_torsion_basis(d_inv * alpha, a24d, xPd, xQd, xPQd, global_data.E0_data)
@@ -189,7 +189,7 @@ function GeneralizedRandomIsogImages(d::BigInt, a24::Proj1{T}, xP::Proj1{T}, xQ:
             xPd, xQd, xPQd = action_on_torsion_basis(d_inv * alpha, a24, xP, xQ, xPQ, global_data.E0_data)
 
             # compute an extra l-isogeny
-            K = random_point_order_l(a24, p + 1, l)
+            K = random_point_order_l(a24, p + 1, l, FactorInTwist)
             a24d, (xPd, xQd, xPQd) = odd_isogeny(a24, K, l, [xPd, xQd, xPQd])
 
             a24, xP, xQ, xPQ, _ = d2isogeny(a24, a24d, xP, xQ, xPQ, xPd, xQd, xPQd, ExponentFull, d, Proj1{FqFieldElem}[], global_data)

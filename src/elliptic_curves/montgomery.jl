@@ -14,11 +14,15 @@ function random_point(A::T) where T <: RingElem
 end
 
 # random point on a Montgomery curve: y^2 = x^3 + Ax^2 + x
-function random_point(A::Proj1{T}) where T <: RingElem
+function random_point(A::Proj1{T}, is_twist=false) where T <: RingElem
     F = parent(A.X)
     while true
         x = rand(F)
-        is_square(A.Z^2*x^3 + A.X*A.Z*x^2 + A.Z^2*x) && return Proj1(x)
+        if !is_twist
+            is_square(A.Z^2*x^3 + A.X*A.Z*x^2 + A.Z^2*x) && return Proj1(x)
+        else
+            !is_square(A.Z^2*x^3 + A.X*A.Z*x^2 + A.Z^2*x) && return Proj1(x)
+        end
     end
 end
 
@@ -37,11 +41,11 @@ function random_point_order_2power(A::T, curve_order::Integer, e::Integer) where
 end
 
 # random point on a Montgomery curve with prime order l
-function random_point_order_l(a24::Proj1{T}, curve_order::Integer, l::Integer) where T <: RingElem
+function random_point_order_l(a24::Proj1{T}, curve_order::Integer, l::Integer, is_twist=false) where T <: RingElem
     n = div(curve_order, l)
     A = a24_to_A(a24)
     while true
-        P = random_point(A)
+        P = random_point(A, is_twist)
         P = ladder(n, P, a24)
         if !is_infinity(P)
             return P
