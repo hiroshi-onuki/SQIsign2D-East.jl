@@ -77,7 +77,7 @@ end
 # q_I(alpha)/d < 2^a,
 # and -D*(2^ExponentFull - D) is divisible by l, where D = q_I(alpha)/d(2^c - q_I(alpha)/d)
 function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{Tuple{Int, Int}}, l::Int)
-    q(x, y) = quadratic_form(QOrderElem(x), QOrderElem(y))
+    q(x, y) = div(quadratic_form(QOrderElem(x), QOrderElem(y)), 2)
     bound = BigInt(1) << a
 
     # LLL reduction
@@ -101,7 +101,6 @@ function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{
 
     counter = 0
     while true
-        counter += 1
         x[i] += 1
         while x[i] > L[i]
             i += 1
