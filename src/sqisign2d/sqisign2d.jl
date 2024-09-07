@@ -153,6 +153,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
         I = involution_product(Isec, Icomcha)
         nI = Dsec * Dcom << SQISIGN_challenge_length
         alpha, d, found = element_for_response(I, nI, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, FactorForAuxiliaryDegree)
+        !found && println("Warning: element_for_response failed")
         !found && continue
 
         # compute the image under the response sigma
