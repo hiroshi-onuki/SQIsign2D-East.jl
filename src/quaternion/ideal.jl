@@ -76,7 +76,7 @@ end
 # there exist d s.t. d | q_I(alpha), d | prod(factors),
 # q_I(alpha)/d < 2^a,
 # and -D*(2^ExponentFull - D) is divisible by l, where D = q_I(alpha)/d(2^c - q_I(alpha)/d)
-function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{Tuple{Int, Int}}, l::Int)
+function element_for_response(I::LeftIdeal, Icomcha::LeftIdeal, nI::BigInt, nIcomcha::BigInt, a::Int, factors::Vector{Tuple{Int, Int}}, l::Int)
     q(x, y) = div(quadratic_form(QOrderElem(x), QOrderElem(y)), 2)
     bound = BigInt(1) << a
 
@@ -119,8 +119,8 @@ function element_for_response(I::LeftIdeal, nI::BigInt, a::Int, factors::Vector{
             if x != zeros(Integer, 4)
                 v = sum([x[i]*red_basis[i] for i in 1:4])
                 alpha = QOrderElem(v[1], v[2], v[3], v[4])
-                g = gcd(alpha)
-                g = div(g, gcd(g, nI))
+                IsecJ = ideal_transform(Icomcha, alpha, nIcomcha)
+                g = gcd(IsecJ)
                 alpha = div(alpha, g)
                 newN = div(norm(alpha), nI)
                 if newN % 2 == 1

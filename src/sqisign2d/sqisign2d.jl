@@ -89,7 +89,7 @@ function key_gen(global_data::GlobalData)
 end
 
 function commitment(global_data::GlobalData)
-    D_sec = random_prime(BigInt(floor(p^(1/2))), BigInt(1) << ExponentFull)
+    D_sec = 2 * rand(1:BigInt(1) << (ExponentFull - 1)) - 1
     a24, xP, xQ, xPQ, I_sec = RandIsogImages(D_sec, global_data, false)
     a24, (xP, xQ, xPQ) = Montgomery_normalize(a24, [xP, xQ, xPQ])
     A = Montgomery_coeff(a24)
@@ -152,7 +152,7 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
         Icomcha = intersection(Icom, Icha)
         I = involution_product(Isec, Icomcha)
         nI = Dsec * Dcom << SQISIGN_challenge_length
-        alpha, d, found = element_for_response(I, nI, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, FactorForAuxiliaryDegree)
+        alpha, d, found = element_for_response(I, Icomcha, nI, Dcom << SQISIGN_challenge_length, ExponentForTorsion, global_data.E0_data.DegreesOddTorsionBases, FactorForAuxiliaryDegree)
         !found && continue
 
         # compute the image under the response sigma
@@ -165,6 +165,8 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
         n_odd_l = length(global_data.E0_data.DegreesOddTorsionBases)
         odd_kernels = Proj1{FqFieldElem}[]
         odd_kernel_coeffs = Tuple{Int, Int}[]
+        IsecIsigma = ideal_transform(Icomcha, alpha, Dcom << SQISIGN_challenge_length)
+        beta = primitive_element(IsecIsigma)
         for i in 1:n_odd_l
             l, e = global_data.E0_data.DegreesOddTorsionBases[i]
             f = Int(log(l, gcd(d, l^e)))
@@ -173,9 +175,9 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
                 xPodd = ladder(l^(e-f), xPodd, a24pub)
                 xQodd = ladder(l^(e-f), xQodd, a24pub)
                 xPQodd = ladder(l^(e-f), xPQodd, a24pub)
-                a, b = kernel_coefficients(involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
+                a, b = kernel_coefficients(beta, l, f, global_data.E0_data.Matrices_odd[i])
                 a, b = l^(e-f) * M_odd_images[i] * [a, b]
-                Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, involution(alpha), l, f, global_data.E0_data.Matrices_odd[i])
+                Kodd = kernel_generator(xPodd, xQodd, xPQodd, a24pub, beta, l, f, global_data.E0_data.Matrices_odd[i])
             else
                 a, b = 0, 0
                 Kodd = infinity_point(global_data.Fp2)
