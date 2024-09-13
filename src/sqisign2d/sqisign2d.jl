@@ -343,21 +343,21 @@ function signing(pk::FqFieldElem, sk, m::String, global_data::GlobalData, is_com
             if a % 2 == 1
                 b = (b * invmod(a, BigInt(1) << SQISIGN_challenge_length)) % (BigInt(1) << SQISIGN_challenge_length)
                 sign[idx] = 1
-                sign[idx+1:idx+SQISIGN2D_2a_length] = integer_to_bytes(b, SQISIGN2D_2a_length)
+                sign[idx+1:idx+SQISIGN2D_2b_length] = integer_to_bytes(b, SQISIGN2D_2b_length)
                 P = xQcha
             else
                 a = (a * invmod(b, BigInt(1) << SQISIGN_challenge_length)) % (BigInt(1) << SQISIGN_challenge_length)
                 sign[idx] = 0
-                sign[idx+1:idx+SQISIGN2D_2a_length] = integer_to_bytes(a, SQISIGN2D_2a_length)
+                sign[idx+1:idx+SQISIGN2D_2b_length] = integer_to_bytes(a, SQISIGN2D_2b_length)
                 P = xPcha
             end
-            idx += SQISIGN2D_2a_length + 1
+            idx += SQISIGN2D_2b_length + 1
             a24com_d, tmp = two_e_iso(a24cha, Kcha_dual, SQISIGN_challenge_length, [P], StrategyChallenge)
             a24com_d, tmp = Montgomery_normalize(a24com_d, [tmp[1]])
             Kcha_d = tmp[1]
             r = ec_dlog(Acom, Kcha, Kcha_d, xQcom_fix, global_data.E0_data)
-            sign[idx:idx+SQISIGN2D_2a_length-1] = integer_to_bytes(r, SQISIGN2D_2a_length)
-            idx += SQISIGN2D_2a_length
+            sign[idx:idx+SQISIGN2D_2b_length-1] = integer_to_bytes(r, SQISIGN2D_2b_length)
+            idx += SQISIGN2D_2b_length
 
             sign[idx] = d2cod_bit
             idx += 1
@@ -527,10 +527,10 @@ function verify_compact(pk::FqFieldElem, sign::Vector{UInt8}, m::String, global_
 
     bit_s = sign[idx]
     idx += 1
-    s = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
-    idx += SQISIGN2D_2a_length
-    r = bytes_to_integer(sign[idx:idx+SQISIGN2D_2a_length-1])
-    idx += SQISIGN2D_2a_length
+    s = bytes_to_integer(sign[idx:idx+SQISIGN2D_2b_length-1])
+    idx += SQISIGN2D_2b_length
+    r = bytes_to_integer(sign[idx:idx+SQISIGN2D_2b_length-1])
+    idx += SQISIGN2D_2b_length
     d2cod_bit = sign[idx]
     idx += 1
 
