@@ -99,7 +99,6 @@ function element_for_response(I::LeftIdeal, Icomcha::LeftIdeal, nI::BigInt, nIco
     L[i] = Integer(floor(Z - U[i]))
     x[i] = Integer(ceil(-Z-U[i]) - 1)
 
-    counter = 0
     while true
         x[i] += 1
         while x[i] > L[i]
