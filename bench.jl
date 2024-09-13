@@ -46,7 +46,7 @@ function benchmark_test(param::Module, num::Int, is_compact::Bool)
     print("\n")
 end
 
-num = 10
+num = 100
 benchmark_test(SQIsign2D.Level1, num, false)
 benchmark_test(SQIsign2D.Level1, num, true)
 benchmark_test(SQIsign2D.Level3, num, false)
