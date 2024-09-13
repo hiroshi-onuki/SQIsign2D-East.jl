@@ -1,5 +1,5 @@
-const p = BigInt(2)^253 * 3^3 - 1
+const p = BigInt(2)^252 * 17 - 1
 const Log2p = Int(ceil(log(2, p)))
-const ExponentFull = 253
+const ExponentFull = 252
 const ExponentForTorsion = 127
-const Cofactor = 3^3
+const Cofactor = 17
